@@ -1,7 +1,21 @@
 Tämä on harjoitustyö Aalto-yliopiston Teknillisen korkeakoulun kurssille
-T-76.1143 Tiedonhallintajärjestelmät syksyllä 2010.
+T-76.1143 Tiedonhallintajärjestelmät [1] syksyllä 2010.
+
+Työtä tehdessä käytetään:
+  - GitHub git-repositorio [2]
+  - GitHubin wiki [3]
+  - PostgreSQL-tietokantaa [4]
+  - Pythonille rakentuvaa Djangoa [5]
 
 Tekijöinä:
-Mikko Markus Torni
-Sami J. Lehtinen
-Matti Niemenmaa
+Mikko Markus Torni <mtorni@cc.hut.fi>
+Sami J. Lehtinen <sjl@iki.fi>
+Matti Niemenmaa <mniemenm@cc.hut.fi>
+
+Projektin GitHub-sivut: http://github.com/sjlehtin/minivr
+
+  [1] https://noppa.tkk.fi/noppa/kurssi/t-76.1143/course_assignment__general
+  [2] http://github.com/sjlehtin/minivr
+  [3] http://github.com/sjlehtin/minivr/wiki
+  [4] http://www.postgresql.org/
+  [5] http://www.djangoproject.com/
