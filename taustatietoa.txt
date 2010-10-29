@@ -1,0 +1,65 @@
+Mita asioita voi ottaa huomioon jarjestelmaa tehdessa?
+
+Hinnoittelu
+-----------
+- VR-tyyppinen: logaritminen kilometrien mukaan
+    o tusina erilaista alennuslipputyyppia
+    o lisaksi pyorapaikat
+    o sarjaliput
+    o kuukausiliput
+      - kiintiopaikat
+    o junatyyppimaksu
+
+    o kaukoliikenne, lahiliikenne ja seutuliikenne erikseen
+
+- Halpalentotyyppinen: hinta nousee varaustilanteen mukaan
+
+- Muita hinnoittelumalleja?
+
+Junavuorot
+----------
+- Junavuoron tunnus, kellonaika, liikennointipaivat (ma-su)
+  - Mika junayksikko toteuttaa milloinkin vuoron
+  - Junien huollot
+  - Varikkojen sijainnit
+  - Siivoukset
+- Reititys:
+  - Mita junavuoroja kayttamalla voi ylipaataan paasta perille
+    o junan rikkoutuessa vaihtoehto loppumatkalle (taksi, toinen juna, bussi)
+  - Milloin kaytetaan kauko- ja lahiliikennetta
+- jatkoyhteydet?
+
+Paikkavaraukset
+---------------
+- Asiakkaalle pitaa pystya osoittamaan:
+  - tiettyyn aikaan lahtevaan junaan
+  - tiettyyn vaunuun
+  - tietylle istumapaikalle 
+  - tiettyyn luokkaan
+  - yksittainen makuupaikka / hytti
+  - autopaikka
+- Lisaksi huomioi: ryhmavaraukset, allergiapaikat, koirat, matkatavarat, jne
+- VR-hinnoittelussa asiakkaalla voi olla jo
+  - matkalippu
+  - paikkavaraus
+  - junatyypin maksu
+  .. mutta ei valttamatta kaikkia, koska on voinut jaada junasta, kayttaa sarjalippua
+
+Muuta huomioitavaa
+------------------
+- muutokset lippuihin ennen junan lahtoa
+- kasin tehtavat muutokset toimistossa, esimerkiksi hankalemmat paikkavaraukset
+  tai kesken matkaa tapahtuvat muutokset
+- Liitannat jalleenmyyjien jarjestelmiin
+- Junamaatti vs. verkkokauppa vs. toimisto
+  - verkkokaupassa pitaa olla maksun vastaanotto (luottokortti, verkkomaksu,
+    tilisiirto)
+
+Poikkeustilanteet
+-----------------
+- junavuorot myohassa
+- junat peruuntuvat
+- ratatoiden vuoksi bussi korvaa osan matkasta (->uudet matkustusajat)
+- ylimaaraiset junavuorot sesonkiaikoina
+- tilausjunat
+
