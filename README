@@ -39,6 +39,11 @@ Alusta Djangon vaatimat setit tietokantaan:
     $ cd devsite
     $ python manage.py syncdb
 
+Linkkaa templatet /tmp-hakemistoon (asetukset vaativat absoluuttisen polun
+joten tämä on nyt helpoin vaihtoehto eri kehitysympäristöjä varten):
+
+    $ ln -s `pwd`/templates /tmp/minivr-templates
+
 Testaa että kaikki toimii:
 
     $ python manage.py runserver

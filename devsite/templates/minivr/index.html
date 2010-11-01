@@ -1,0 +1,26 @@
+{% if vuorot %}
+    <table>
+        <thead>
+        <tr>
+            <th>Lähtö</th>
+            <th>Tulo</th>
+            <th>Juna</th>
+            <th>Paikkoja vapaana</th>
+        </tr>
+        </thead>
+        <tbody>
+        {% for vuoro in vuorot %}
+        {% with vuoro.asemat.all as asemat %}
+        <tr>
+            <td>{{ vuoro.aika }} {{ asemat|first }}</td>
+            <td>{{ asemat.reverse|first }}</td>
+            <td>{{ vuoro.juna }}</td>
+            <td>{{ vuoro.paikkoja_vapaana }}</td>
+        </tr>
+        {% endwith %}
+        {% endfor %}
+        </tbody>
+    </table>
+{% else %}
+    <p>Ei vapaita junavuoroja.</p>
+{% endif %}
