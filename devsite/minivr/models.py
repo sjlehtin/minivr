@@ -33,9 +33,24 @@ class Service(models.Model):
                          unicode(departure.time)))
 
 class Stop(models.Model):
-    service = models.ForeignKey('Service', related_name = 'schedule')
-    station = models.ForeignKey('Station')
-    time    = models.TimeField()
+    MONTHS = zip(xrange(1,13), ('January', 'February', 'March', 'April', 'May',
+                                'June', 'July', 'August', 'September',
+                                'October', 'November', 'December'))
+
+    DAYS = zip(xrange(1,8), ('Monday', 'Tuesday', 'Wednesday', 'Thursday',
+                             'Friday', 'Saturday', 'Sunday'))
+
+    service     = models.ForeignKey('Service', related_name = 'schedule')
+    station     = models.ForeignKey('Station')
+    time        = models.TimeField()
+
+    # The dates during which this stop is used by the service.
+    year_min    = models.PositiveIntegerField(null = True)
+    year_max    = models.PositiveIntegerField(null = True)
+    month_min   = models.PositiveIntegerField(choices = MONTHS)
+    month_max   = models.PositiveIntegerField(choices = MONTHS)
+    weekday_min = models.PositiveIntegerField(choices = DAYS)
+    weekday_max = models.PositiveIntegerField(choices = DAYS)
 
 class Train(models.Model):
     name  = models.CharField(max_length = 255)
