@@ -11,5 +11,7 @@ def index(request):
     return render_to_response('minivr/index.html', {'services':services})
 
 def service_detail(request, service_id):
-    s = get_object_or_404(Service, id = service_id)
-    return render_to_response('minivr/service_detail.html', {'service':s})
+    service = get_object_or_404(Service, id = service_id)
+    stops = service.schedule.order_by('departure_time')
+    return render_to_response('minivr/service_detail.html',
+                              {'service':service, 'stops':stops})
