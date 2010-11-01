@@ -16,10 +16,10 @@ class Service(models.Model):
     free_seats = models.PositiveIntegerField()
 
     def departure(self):
-        return self.schedule.all().order_by('time')[0]
+        return self.schedule.order_by('time')[0]
 
     def arrival(self):
-        return self.schedule.all().order_by('-time')[0]
+        return self.schedule.order_by('-time')[0]
 
     def clean(self):
         if self.free_seats > self.train.seats:
