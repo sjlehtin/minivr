@@ -50,10 +50,7 @@ class Service(models.Model):
             i += 1
 
     def __unicode__(self):
-        departure = self.departure()
-        return ' '.join((unicode(self.train),
-                         unicode(departure.station),
-                         unicode(departure.departure_time)))
+        return ' '.join([unicode(self.train), unicode(self.id)])
 
 class Stop(models.Model):
     MONTHS = zip(xrange(1,13), ('January', 'February', 'March', 'April', 'May',

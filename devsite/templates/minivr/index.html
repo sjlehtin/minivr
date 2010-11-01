@@ -2,18 +2,18 @@
     <table>
         <thead>
         <tr>
+            <th>Linja</th>
             <th>Lähtö</th>
             <th>Tulo</th>
-            <th>Juna</th>
             <th>Paikkoja vapaana</th>
         </tr>
         </thead>
         <tbody>
         {% for service in services %}
         <tr>
+            <td><a href="/minivr/service/{{ service.id }}/">{{ service }}</a></td>
             <td>{{ service.departure.departure_time }} {{ service.departure.station }}</td>
             <td>{{ service.arrival.arrival_time }} {{ service.arrival.station }}</td>
-            <td>{{ service.train }}</td>
             <td>{{ service.free_seats }}</td>
         </tr>
         {% endfor %}

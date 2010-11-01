@@ -1,0 +1,19 @@
+<h1>{{ service }}</h1>
+<table>
+    <thead>
+    <tr>
+        <th>Pysäkki</th>
+        <th>Saapumisaika</th>
+        <th>Lähtöaika</th>
+    </tr>
+    </thead>
+    <tbody>
+    {% for stop in service.schedule.iterator %}
+    <tr>
+        <td>{{ stop.station }}</td>
+        <td>{{ stop.arrival_time|default:"" }}</td>
+        <td>{{ stop.departure_time|default:"" }}</td>
+    </tr>
+    {% endfor %}
+    </tbody>
+</table>
