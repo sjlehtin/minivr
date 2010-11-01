@@ -11,13 +11,15 @@ class Lippu(models.Model):
         return unicode(self.vuoro) + " " + unicode(self.hinta)
 
 class Vuoro(models.Model):
-    juna = models.ForeignKey('Juna')
-
-    # Jokaisella asemalla ei välttämättä pysähdytä, joten kaikki tulee listata.
-    asemat = models.ManyToManyField('Asema')
-
-    aika             = models.TimeField()
+    juna             = models.ForeignKey('Juna')
+    stoppi           = models.ManyToManyField('Asema', through = 'Stoppi')
     paikkoja_vapaana = models.PositiveIntegerField()
+
+    def lahto(self):
+        return self.aikataulu.all().order_by('aika')[0]
+
+    def tulo(self):
+        return self.aikataulu.all().order_by('-aika')[0]
 
     def clean(self):
         if self.paikkoja_vapaana > self.juna.paikkoja:
@@ -25,7 +27,15 @@ class Vuoro(models.Model):
                                   'paikkoja kuin junassa on tilaa.')
 
     def __unicode__(self):
-        return unicode(self.juna) + " " + unicode(self.aika)
+        lahto = self.lahto()
+        return ' '.join((unicode(self.juna),
+                         unicode(lahto.asema),
+                         unicode(lahto.aika)))
+
+class Stoppi(models.Model):
+    vuoro = models.ForeignKey('Vuoro', related_name = 'aikataulu')
+    asema = models.ForeignKey('Asema')
+    aika  = models.TimeField()
 
 class Juna(models.Model):
     tyyppi   = models.CharField(max_length = 255)
