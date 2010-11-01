@@ -4,6 +4,7 @@ admin.autodiscover()
 
 urlpatterns = patterns('',
     (r'^minivr/$', 'minivr.views.index'),
+    (r'^minivr/service/(?P<service_id>\d+)/$', 'minivr.views.service_detail'),
 
     # (r'^admin/doc/', include('django.contrib.admindocs.urls')),
     (r'^admin/', include(admin.site.urls)),
