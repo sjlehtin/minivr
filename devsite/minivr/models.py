@@ -3,50 +3,50 @@
 from django.core.exceptions import ValidationError
 from django.db import models
 
-class Lippu(models.Model):
-    vuoro = models.ForeignKey('Vuoro')
-    hinta = models.DecimalField(max_digits = 4, decimal_places = 2)
+class Ticket(models.Model):
+    service = models.ForeignKey('Service')
+    price   = models.DecimalField(max_digits = 4, decimal_places = 2)
 
     def __unicode__(self):
-        return unicode(self.vuoro) + " " + unicode(self.hinta)
+        return unicode(self.service) + " " + unicode(self.price)
 
-class Vuoro(models.Model):
-    juna             = models.ForeignKey('Juna')
-    stoppi           = models.ManyToManyField('Asema', through = 'Stoppi')
-    paikkoja_vapaana = models.PositiveIntegerField()
+class Service(models.Model):
+    train      = models.ForeignKey('Train')
+    stations   = models.ManyToManyField('Station', through = 'Stop')
+    free_seats = models.PositiveIntegerField()
 
-    def lahto(self):
-        return self.aikataulu.all().order_by('aika')[0]
+    def departure(self):
+        return self.schedule.all().order_by('time')[0]
 
-    def tulo(self):
-        return self.aikataulu.all().order_by('-aika')[0]
+    def arrival(self):
+        return self.schedule.all().order_by('-time')[0]
 
     def clean(self):
-        if self.paikkoja_vapaana > self.juna.paikkoja:
-            raise ValidationError('Vuorossa ei voi olla enemmän vapaita '+\
-                                  'paikkoja kuin junassa on tilaa.')
+        if self.free_seats > self.train.seats:
+            raise ValidationError('A service may not have more free seats '+\
+                                  'than the train can hold.')
 
     def __unicode__(self):
-        lahto = self.lahto()
-        return ' '.join((unicode(self.juna),
-                         unicode(lahto.asema),
-                         unicode(lahto.aika)))
+        departure = self.departure()
+        return ' '.join((unicode(self.train),
+                         unicode(departure.station),
+                         unicode(departure.time)))
 
-class Stoppi(models.Model):
-    vuoro = models.ForeignKey('Vuoro', related_name = 'aikataulu')
-    asema = models.ForeignKey('Asema')
-    aika  = models.TimeField()
+class Stop(models.Model):
+    service = models.ForeignKey('Service', related_name = 'schedule')
+    station = models.ForeignKey('Station')
+    time    = models.TimeField()
 
-class Juna(models.Model):
-    tyyppi   = models.CharField(max_length = 255)
-    paikkoja = models.PositiveIntegerField()
-
-    def __unicode__(self):
-        return self.tyyppi
-
-class Asema(models.Model):
-    nimi     = models.CharField(max_length = 255)
-    yhteydet = models.ManyToManyField('self')
+class Train(models.Model):
+    name  = models.CharField(max_length = 255)
+    seats = models.PositiveIntegerField()
 
     def __unicode__(self):
-        return self.nimi
+        return self.name
+
+class Station(models.Model):
+    name        = models.CharField(max_length = 255)
+    connections = models.ManyToManyField('self')
+
+    def __unicode__(self):
+        return self.name
