@@ -16,21 +16,44 @@ class Service(models.Model):
     free_seats = models.PositiveIntegerField()
 
     def departure(self):
-        return self.schedule.order_by('time')[0]
+        return self.schedule.exclude(departure_time = None).\
+                             order_by('departure_time')[0]
 
     def arrival(self):
-        return self.schedule.order_by('-time')[0]
+        return self.schedule.exclude(arrival_time = None).\
+                             order_by('-arrival_time')[0]
 
     def clean(self):
         if self.free_seats > self.train.seats:
             raise ValidationError('A service may not have more free seats '+\
                                   'than the train can hold.')
 
+        i = 0
+        n = self.schedule.count()
+        for stop in self.schedule.order_by('departure_time').iterator():
+            if i == 0:
+                if stop.arrival_time:
+                    raise ValidationError('The first stop should lack an '+\
+                                          'arrival time')
+            else:
+                if not stop.arrival_time:
+                    raise ValidationError('Only the first stop should lack '+\
+                                          'an arrival time')
+            if i == n-1:
+                if stop.departure_time:
+                    raise ValidationError('The last stop should lack a '+\
+                                          'departure time')
+            else:
+                if not stop.departure_time:
+                    raise ValidationError('Only the last stop should lack a '+\
+                                          'departure time')
+            i += 1
+
     def __unicode__(self):
         departure = self.departure()
         return ' '.join((unicode(self.train),
                          unicode(departure.station),
-                         unicode(departure.time)))
+                         unicode(departure.departure_time)))
 
 class Stop(models.Model):
     MONTHS = zip(xrange(1,13), ('January', 'February', 'March', 'April', 'May',
@@ -40,9 +63,10 @@ class Stop(models.Model):
     DAYS = zip(xrange(1,8), ('Monday', 'Tuesday', 'Wednesday', 'Thursday',
                              'Friday', 'Saturday', 'Sunday'))
 
-    service     = models.ForeignKey('Service', related_name = 'schedule')
-    station     = models.ForeignKey('Station')
-    time        = models.TimeField()
+    service        = models.ForeignKey('Service', related_name = 'schedule')
+    station        = models.ForeignKey('Station')
+    arrival_time   = models.TimeField(null = True)
+    departure_time = models.TimeField(null = True)
 
     # The dates during which this stop is used by the service.
     year_min    = models.PositiveIntegerField(null = True)

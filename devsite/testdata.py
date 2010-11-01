@@ -25,10 +25,10 @@ pendolino.save()
 ht = Service(train = pendolino, free_seats = 50)
 ht.save()
 
-s1 = Stop(service = ht, station = helsinki, time = time(19,03),
+s1 = Stop(service = ht, station = helsinki, departure_time = time(19,03),
           month_min = 5, month_max = 11, weekday_min = 1, weekday_max = 7,
           year_min = 2010)
-s2 = Stop(service = ht, station = turku,    time = time(21,00),
+s2 = Stop(service = ht, station = turku,    arrival_time   = time(21,00),
           month_min = 1, month_max =  6, weekday_min = 1, weekday_max = 5,
           year_min = 2010, year_max = 2010)
 s1.save()

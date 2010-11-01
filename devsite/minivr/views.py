@@ -6,6 +6,6 @@ from minivr.models import Service
 def index(request):
     services = Service.objects.\
                    filter(free_seats__gt = 0).\
-                   annotate(departure_time = Min('schedule__time')).\
+                   annotate(departure_time = Min('schedule__departure_time')).\
                    order_by('departure_time')
     return render_to_response('minivr/index.html', {'services':services})
