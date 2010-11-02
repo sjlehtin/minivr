@@ -9,7 +9,6 @@ from minivr.models import Service
 def index(request, last_reserved = None):
     services = Service.objects.\
                    filter(free_seats__gt = 0).\
-                   annotate(departure_time = Min('schedule__departure_time')).\
                    order_by('departure_time')
     if last_reserved:
         last_reserved = int(last_reserved)

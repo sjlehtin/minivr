@@ -11,9 +11,10 @@ class Ticket(models.Model):
         return unicode(self.service) + " " + unicode(self.price)
 
 class Service(models.Model):
-    train      = models.ForeignKey('Train')
-    stations   = models.ManyToManyField('Station', through = 'Stop')
-    free_seats = models.PositiveIntegerField()
+    train          = models.ForeignKey('Train')
+    departure_time = models.TimeField()
+    stations       = models.ManyToManyField('Station', through = 'Stop')
+    free_seats     = models.PositiveIntegerField()
 
     def departure(self):
         return self.schedule.exclude(departure_time = None).\
@@ -35,6 +36,9 @@ class Service(models.Model):
                 if stop.arrival_time:
                     raise ValidationError('The first stop should lack an '+\
                                           'arrival time')
+                if stop.departure_time != 0:
+                    raise ValidationError("The first stop's departure time "+\
+                                          'should be zero')
             else:
                 if not stop.arrival_time:
                     raise ValidationError('Only the first stop should lack '+\
@@ -60,10 +64,13 @@ class Stop(models.Model):
     DAYS = zip(xrange(1,8), ('Monday', 'Tuesday', 'Wednesday', 'Thursday',
                              'Friday', 'Saturday', 'Sunday'))
 
-    service        = models.ForeignKey('Service', related_name = 'schedule')
-    station        = models.ForeignKey('Station')
-    arrival_time   = models.TimeField(null = True)
-    departure_time = models.TimeField(null = True)
+    service = models.ForeignKey('Service', related_name = 'schedule')
+    station = models.ForeignKey('Station')
+
+    # The cumulative number of minutes since the start of the trip (indicated
+    # by departure_time in Service).
+    arrival_time   = models.PositiveIntegerField(null = True)
+    departure_time = models.PositiveIntegerField(null = True)
 
     # The dates during which this stop is used by the service.
     year_min    = models.PositiveIntegerField(null = True)

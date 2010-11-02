@@ -1,3 +1,4 @@
+{% load minivr_time %}
 <h1>{{ service }}</h1>
 <table>
     <thead>
@@ -11,8 +12,16 @@
     {% for stop in stops %}
     <tr>
         <td>{{ stop.station }}</td>
-        <td>{{ stop.arrival_time|default:"" }}</td>
-        <td>{{ stop.departure_time|default:"" }}</td>
+        <td>
+            {% if stop.arrival_time != None %}
+                {{ service.departure_time|addminutes:stop.arrival_time }}
+            {% endif %}
+        </td>
+        <td>
+            {% if stop.departure_time != None %}
+                {{ service.departure_time|addminutes:stop.departure_time }}
+            {% endif %}
+        </td>
     </tr>
     {% endfor %}
     </tbody>
