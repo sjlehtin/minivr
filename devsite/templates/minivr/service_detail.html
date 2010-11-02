@@ -14,12 +14,12 @@
         <td>{{ stop.station }}</td>
         <td>
             {% if stop.arrival_time != None %}
-                {{ service.departure_time|addminutes:stop.arrival_time }}
+                {{ service.departure_time|addminutes:stop.arrival_time|time:"H:i" }}
             {% endif %}
         </td>
         <td>
             {% if stop.departure_time != None %}
-                {{ service.departure_time|addminutes:stop.departure_time }}
+                {{ service.departure_time|addminutes:stop.departure_time|time:"H:i" }}
             {% endif %}
         </td>
     </tr>
