@@ -6,12 +6,11 @@ from django.template          import RequestContext
 
 from minivr.models import Service
 
-def index(request, last_reserved = None):
+def index(request):
     services = Service.objects.\
                    filter(free_seats__gt = 0).\
                    order_by('departure_time')
-    if last_reserved:
-        last_reserved = int(last_reserved)
+    last_reserved = int(request.GET.get('last_reserved', -1))
     return render_to_response(
         'minivr/index.html',
         {'services':services, 'last_reserved':last_reserved},
@@ -26,6 +25,6 @@ def service_detail(request, service_id):
 def service_reserve(request, service_id):
     service = get_object_or_404(Service, id = service_id)
     service.free_seats -= 1
-    url = reverse('minivr.views.index', args = (service_id,))
+    url = reverse('minivr.views.index') + '?last_reserved=' + service_id
     service.save()
     return HttpResponseRedirect(url)
