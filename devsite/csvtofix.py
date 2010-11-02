@@ -5,11 +5,7 @@ from sys import stdin, stdout
 
 random.seed(6)
 
-fstations = []
-ftrains = []
-fservices = []
-fstops = []
-ftickets = []
+fixtures = []
 
 stations = {}
 connections = {}
@@ -24,19 +20,18 @@ for line in stdin:
     (train,station,arrival,departure) = line.strip().split(',')
 
     if not station in stations:
-        connections[station] = set()
+        connections[s] = set()
         stations[station] = s
         s += 1
 
     if train == prev_train:
-        connections[prev_station].add(station)
-        connections[station].add(prev_station)
+        connections[stations[prev_station]].add(stations[station])
 
     if not train in trains:
         trains[train] = (t, random.choice([72, 84, 100, 120]))
         services[train] = []
-        ftrains.append({'model': 'minivr.train', 'pk': t, 'fields':
-                        {'name': train, 'seats': trains[train][1]}})
+        fixtures.append({'model': 'minivr.train', 'pk': t, 'fields':
+                         {'name': train, 'seats': trains[train][1]}})
         t += 1
 
     services[train].append((stations[station], arrival, departure))
@@ -44,19 +39,39 @@ for line in stdin:
     prev_train = train
     prev_station = station
 
+fixtures.append({'model': 'minivr.customertype', 'pk': 1, 'fields': {'name': 'aikuinen'}})
+
+for name,id in stations.items():
+    fixtures.append({'model': 'minivr.station', 'pk': id, 'fields': {'name': name}})
+
+distances = {}
+costs = {}
+c = 0
 for v in connections:
-    fstations.append({'model': 'minivr.station', 'pk': stations[v], 'fields':
-                      {'name': v, 'connections': [stations[u] for u in connections[v]]}})
+    for u in connections[v]:
+        if not (u,v) in distances:
+            distances[(u,v)] = int(random.normalvariate(50,10))
+            costs    [(u,v)] = int(distances[(u,v)] * random.normalvariate(1, 0.2))
+
+            distances[(v,u)] = distances[(u,v)]
+            costs    [(v,u)] = costs    [(u,v)]
+
+        fixtures.append({'model': 'minivr.connection', 'pk': c, 'fields':
+                         {'out_of':   v,
+                          'to':       u,
+                          'distance': distances[(u,v)],
+                          'cost':     costs    [(u,v)]}})
+        c += 1
 
 s = 0
 st = 0
 for train, service in services.items():
     dt = service[0][2]
 
-    fservices.append({'model': 'minivr.service', 'pk': s, 'fields':
-                      {'train': trains[train][0],
-                       'departure_time': dt,
-                       'free_seats': random.randint(1, trains[train][1])}})
+    fixtures.append({'model': 'minivr.service', 'pk': s, 'fields':
+                     {'train': trains[train][0],
+                      'departure_time': dt,
+                      'free_seats': random.randint(1, trains[train][1])}})
 
     dt = datetime.strptime(dt, '%H:%M')
 
@@ -64,23 +79,23 @@ for train, service in services.items():
         a = (datetime.strptime(arrival,   '%H:%M') - dt).seconds / 60 if arrival   else None
         d = (datetime.strptime(departure, '%H:%M') - dt).seconds / 60 if departure else None
 
-        fstops.append({'model': 'minivr.stop', 'pk': st, 'fields':
-                       {'service': s,
-                        'station': station,
-                        'arrival_time': a,
-                        'departure_time': d,
-                        'year_min': None,
-                        'year_max': None,
-                        'month_min': 1,
-                        'month_max': 12,
-                        'weekday_min': 1,
-                        'weekday_max': 7}})
+        fixtures.append({'model': 'minivr.stop', 'pk': st, 'fields':
+                         {'service': s,
+                          'station': station,
+                          'arrival_time': a,
+                          'departure_time': d,
+                          'year_min': None,
+                          'year_max': None,
+                          'month_min': 1,
+                          'month_max': 12,
+                          'weekday_min': 1,
+                          'weekday_max': 7}})
         st += 1
 
-    ftickets.append({'model': 'minivr.ticket', 'pk': s, 'fields':
+    fixtures.append({'model': 'minivr.ticket', 'pk': s, 'fields':
                      {'service': s,
-                      'price': '%d.%d0' % (round(random.normalvariate(10,2)), random.randint(0,9))}})
+                      'customer_type': 1,
+                      'price_per_cost': '%d.%d' % (round(random.randint(0,1)), random.randint(20,9999))}})
     s += 1
 
-fixtures = fstations + ftrains + fservices + fstops + ftickets
 json.dump(fixtures, stdout, ensure_ascii = False, indent = 2)

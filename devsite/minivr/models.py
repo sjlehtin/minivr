@@ -4,11 +4,16 @@ from django.core.exceptions import ValidationError
 from django.db import models
 
 class Ticket(models.Model):
-    service = models.ForeignKey('Service')
-    price   = models.DecimalField(max_digits = 4, decimal_places = 2)
+    service        = models.ForeignKey('Service')
+    customer_type  = models.ForeignKey('CustomerType')
+    price_per_cost = models.DecimalField(max_digits = 8, decimal_places = 6)
 
     def __unicode__(self):
-        return unicode(self.service) + " " + unicode(self.price)
+        return ' '.join([unicode(f) for f in [self.service, self.customer_type,
+                                              self.price_per_cost]])
+
+class CustomerType(models.Model):
+    name = models.CharField(max_length = 255)
 
 class Service(models.Model):
     train          = models.ForeignKey('Train')
@@ -88,8 +93,18 @@ class Train(models.Model):
         return self.name
 
 class Station(models.Model):
-    name        = models.CharField(max_length = 255)
-    connections = models.ManyToManyField('self')
+    name       = models.CharField(max_length = 255)
+    neighbours = models.ManyToManyField('self', through = 'Connection',
+                                        symmetrical = False)
 
     def __unicode__(self):
         return self.name
+
+class Connection(models.Model):
+    out_of   = models.ForeignKey('Station', related_name = 'succs')
+    to       = models.ForeignKey('Station', related_name = 'preds')
+    distance = models.PositiveIntegerField()
+
+    # An abstract value used to calculate ticket prices, which are specified as
+    # price per unit of cost.
+    cost = models.PositiveIntegerField()
