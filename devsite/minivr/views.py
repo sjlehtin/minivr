@@ -146,9 +146,9 @@ def get_route(request):
         # departure is short enough.
 
         for (se_id,) in Stop.objects.\
-                            filter(station__id = node.station_id).\
-                            exclude(service__id = node.service_id).\
-                            values_list('service_id'):
+                             filter(station__id = node.station_id).\
+                             exclude(service__id = node.service_id).\
+                             values_list('service_id'):
 
             next = nodes.get((se_id, node.station_id), None)
             if next == None or next.departure_time == None:
