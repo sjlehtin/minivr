@@ -3,7 +3,7 @@
 import datetime
 
 from django.core.urlresolvers import reverse
-from django.db.models         import Q, Min
+from django.db.models         import F, Q, Min
 from django.http              import HttpResponseRedirect
 from django.shortcuts         import render_to_response, get_object_or_404
 from django.template          import RequestContext
@@ -63,17 +63,19 @@ def get_route(request):
             raise ValueError
 
         # Django doesn't understand intervals, so we have to do this manually.
+        #
+        # The silly 'free_seats = free_seats' is just to get a join on the
+        # Service table, ensuring correct input for the manually done bit.
         from_stops = Stop.objects.\
-                filter(station__name__iexact = from_station_name).\
+                filter(station__name__iexact = from_station_name,
+                       service__free_seats = F('service__free_seats')).\
                 extra(
                     where = [
-                        '(minivr_service.departure_time = %s ' + \
-                        'OR minivr_service.departure_time ' + \
+                        'minivr_service.departure_time ' + \
                         '   + (minivr_stop.departure_time ' + \
-                        "      * '1 minute'::interval) = %s)"
+                        "      * '1 minute'::interval) = %s"
                     ],
-                    params = [time, time],
-                    tables = ['minivr_service']).\
+                    params = [time]).\
                 values_list('service_id', 'station_id')
 
         to_station = Station.objects.get(name__iexact = to_station_name)
