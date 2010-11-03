@@ -62,10 +62,19 @@ def get_route(request):
         else:
             raise ValueError
 
-        from_stops =\
-            Stop.objects.filter(station__name__iexact = from_station_name,
-                                service__departure_time = time).\
-                         values_list('service_id', 'station_id')
+        # Django doesn't understand intervals, so we have to do this manually.
+        from_stops = Stop.objects.\
+                filter(station__name__iexact = from_station_name).\
+                extra(
+                    where = [
+                        '(minivr_service.departure_time = %s ' + \
+                        'OR minivr_service.departure_time ' + \
+                        '   + (minivr_stop.departure_time ' + \
+                        "      * '1 minute'::interval) = %s)"
+                    ],
+                    params = [time, time],
+                    tables = ['minivr_service']).\
+                values_list('service_id', 'station_id')
 
         to_station = Station.objects.get(name__iexact = to_station_name)
 
