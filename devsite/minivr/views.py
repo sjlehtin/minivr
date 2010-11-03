@@ -102,11 +102,12 @@ def get_route(request):
 
     class StopNode(object):
         def __init__(self, stop):
-            self.service_id     = stop.service.id
-            self.station_id     = stop.station.id
-            self.arrival_time   = stop.arrival_time
-            self.departure_time = stop.departure_time
-            self.successors     = []
+            self.service_id             = stop.service.id
+            self.station_id             = stop.station.id
+            self.arrival_time           = stop.arrival_time
+            self.departure_time         = stop.departure_time
+            self.service_departure_time = stop.service.departure_time
+            self.successors             = []
 
         def get_connections(self):
             return self.successors
@@ -155,8 +156,8 @@ def get_route(request):
 
             assert next.station_id == node.station_id
 
-            node_dt = Service.objects.get(id = node.service_id).departure_time
-            next_dt = Service.objects.get(id = next.service_id).departure_time
+            node_dt = node.service_departure_time
+            next_dt = next.service_departure_time
 
             timediff = ((next_dt.hour   - node_dt.hour) * 60 + \
                         (next_dt.minute - node_dt.minute))
