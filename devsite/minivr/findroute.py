@@ -16,16 +16,16 @@ class GraphNode(object):
 
     def get_connections(self):
         return self.connections[:]
-        
+
     def __hash__(self):
         return hash(self.id)
 
     def __cmp__(self, other):
         return cmp(self.id, other.id)
 
-def get_route(from_station, to_station, 
+def get_route(from_station, to_station,
               all_stations,
-              time_preference=None, 
+              time_preference=None,
               time_type=DEPARTURE):
     """Get "shortest path" between two stations.  The weighting between
     two vertices is done with a function."""
@@ -42,17 +42,17 @@ def get_route(from_station, to_station,
     stations = set(all_stations)
     while stations:
         def get_closest_node():
-            candidates = filter(lambda x: x[0] in stations, 
+            candidates = filter(lambda x: x[0] in stations,
                                 distances.iteritems())
             if not candidates:
                 return None
-            closest_nodes = [nn[0] for nn in 
+            closest_nodes = [nn[0] for nn in
                              sorted(candidates, key=lambda x: x[1])]
             return closest_nodes[0]
 
         cur = get_closest_node()
         if not cur:
-            raise ValueError("no path from %s to %s" % (from_station, 
+            raise ValueError("no path from %s to %s" % (from_station,
                                                         to_station))
         # The next closest node is the target node.
         if cur == to_station:
@@ -62,11 +62,11 @@ def get_route(from_station, to_station,
 
         for (neighbor, distance) in cur.get_connections():
             new_distance = distances[cur] + distance
-            if ((not neighbor in distances) 
+            if ((not neighbor in distances)
                 or (new_distance < distances[neighbor])):
                 distances[neighbor] = new_distance
-                previous[neighbor] = cur    
-        
+                previous[neighbor] = cur
+
     route = [to_station]
     cur = to_station
     while (cur in previous):
@@ -155,7 +155,7 @@ class SimpleLinearTestCase(unittest.TestCase):
         b.add_connection(a, 1)
         b.add_connection(c, 2)
         c.add_connection(b, 2)
-        
+
         self.assertRaises(ValueError, get_route, a, c, [a, c])
 
 class SmallGraphTestCase(unittest.TestCase):
@@ -198,28 +198,28 @@ class SmallGraphTestCase(unittest.TestCase):
         self.g = g
 
     def testBasic(self):
-        self.assertEqual(get_route(self.a, self.b, self.all_nodes), 
+        self.assertEqual(get_route(self.a, self.b, self.all_nodes),
                          [self.a, self.d, self.b])
 
-        self.assertEqual(get_route(self.a, self.e, self.all_nodes), 
+        self.assertEqual(get_route(self.a, self.e, self.all_nodes),
                          [self.a, self.d, self.e])
 
-        self.assertEqual(get_route(self.a, self.f, self.all_nodes), 
+        self.assertEqual(get_route(self.a, self.f, self.all_nodes),
                          [self.a, self.d, self.f])
 
-        self.assertEqual(get_route(self.f, self.g, self.all_nodes), 
+        self.assertEqual(get_route(self.f, self.g, self.all_nodes),
                          [self.f, self.g])
 
-        self.assertEqual(get_route(self.d, self.g, self.all_nodes), 
+        self.assertEqual(get_route(self.d, self.g, self.all_nodes),
                          [self.d, self.e, self.g])
 
-        self.assertEqual(get_route(self.e, self.f, self.all_nodes), 
+        self.assertEqual(get_route(self.e, self.f, self.all_nodes),
                          [self.e, self.g, self.f])
 
-        self.assertEqual(get_route(self.a, self.g, self.all_nodes), 
+        self.assertEqual(get_route(self.a, self.g, self.all_nodes),
                          [self.a, self.d, self.e, self.g])
 
-        self.assertEqual(get_route(self.g, self.a, self.all_nodes), 
+        self.assertEqual(get_route(self.g, self.a, self.all_nodes),
                          [self.g, self.e, self.d, self.a])
 
 class LargeGraphTestCase(unittest.TestCase):
