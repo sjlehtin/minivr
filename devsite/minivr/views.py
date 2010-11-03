@@ -210,8 +210,9 @@ def get_route(request):
 
     route = []
     for i,n in enumerate(route_nodes):
-        stop = Stop.objects.get(service = n.service_id, station = n.station_id)
-        
+        stop = Stop.objects.select_related().\
+                            get(service = n.service_id, station = n.station_id)
+
         if stop.departure_time:
             stop_time = addminutes(
                 stop.service.departure_time,
