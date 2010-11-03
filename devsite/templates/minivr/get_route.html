@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta http-equiv=Content-Type content="text/html;charset=utf-8">
+    <title>MiniVR - reitinhaku</title>
+</head>
+<body>
+<h1>Reitinhaku</h1>
+<form action="/minivr/route/" method=get>
+    <p><label for=from>Mistä: </label><input type=text name=from id=from value="{{ from }}"></p>
+    <p><label for=to>Mihin: </label><input type=text name=to id=to value="{{ to }}"></p>
+    <p>Kellonaika: <input type=text name=h size=2 maxlength=2 value="{{ h }}">
+                   <input type=text name=m size=2 maxlength=2 value="{{ m }}"></p>
+    <input type=radio name=type value=departure id=departure><label for=departure>Lähtöaika</label>
+    <input type=radio name=type value=arrival id=arrival><label for=arrival>Saapumisaika</label>
+    <input type=submit value="Search">
+</form>
+
+{% if error %}
+<hr>
+<p><strong>{{ error }}</strong></p>
+{% endif %}
+
+{% if route != None %}
+<hr>
+{{ route }}
+{% endif %}
+
+</body>
+</html>

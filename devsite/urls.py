@@ -5,6 +5,7 @@ admin.autodiscover()
 urlpatterns = patterns('minivr.views',
     (r'^$',                                            'index'),
     (r'^minivr/$',                                     'index'),
+    (r'^minivr/route/$',                               'get_route'),
     (r'^minivr/service/(?P<service_id>\d+)/$',         'service_detail'),
     (r'^minivr/service/(?P<service_id>\d+)/reserve/$', 'service_reserve'))
 
