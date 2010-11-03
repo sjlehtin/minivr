@@ -3,7 +3,7 @@
 import datetime
 
 from django.core.urlresolvers import reverse
-from django.db.models         import Q, Min
+from django.db.models         import F, Q, Min
 from django.http              import HttpResponseRedirect
 from django.shortcuts         import render_to_response, get_object_or_404
 from django.template          import RequestContext
@@ -63,17 +63,19 @@ def get_route(request):
             raise ValueError
 
         # Django doesn't understand intervals, so we have to do this manually.
+        #
+        # The silly 'free_seats = free_seats' is just to get a join on the
+        # Service table, ensuring correct input for the manually done bit.
         from_stops = Stop.objects.\
-                filter(station__name__iexact = from_station_name).\
+                filter(station__name__iexact = from_station_name,
+                       service__free_seats = F('service__free_seats')).\
                 extra(
                     where = [
-                        '(minivr_service.departure_time = %s ' + \
-                        'OR minivr_service.departure_time ' + \
+                        'minivr_service.departure_time ' + \
                         '   + (minivr_stop.departure_time ' + \
-                        "      * '1 minute'::interval) = %s)"
+                        "      * '1 minute'::interval) = %s"
                     ],
-                    params = [time, time],
-                    tables = ['minivr_service']).\
+                    params = [time]).\
                 values_list('service_id', 'station_id')
 
         to_station = Station.objects.get(name__iexact = to_station_name)
@@ -146,9 +148,9 @@ def get_route(request):
         # departure is short enough.
 
         for (se_id,) in Stop.objects.\
-                            filter(station__id = node.station_id).\
-                            exclude(service__id = node.service_id).\
-                            values_list('service_id'):
+                             filter(station__id = node.station_id).\
+                             exclude(service__id = node.service_id).\
+                             values_list('service_id'):
 
             next = nodes.get((se_id, node.station_id), None)
             if next == None or next.departure_time == None:
@@ -173,7 +175,7 @@ def get_route(request):
                     node.successors.append((next, timediff))
             else:
                 timediff += next.departure_time - node.arrival_time
-                if timediff <= findroute.TRAIN_SWITCH_TIME:
+                if 0 <= timediff <= findroute.TRAIN_SWITCH_TIME:
                     node.successors.append((next, timediff))
 
         # Secondly, one can continue in the same train, if it will ever depart.
@@ -214,19 +216,14 @@ def get_route(request):
         stop = Stop.objects.select_related().\
                             get(service = n.service_id, station = n.station_id)
 
-        if stop.departure_time:
-            stop_time = addminutes(
-                stop.service.departure_time,
-                stop.departure_time if i < len(route_nodes)-1
-                else stop.arrival_time)
-        else:
-            stop_time = stop.service.departure_time
+        # For the last node, use arrival_time. If we have only one node in the
+        # path, it may be None, in which case use 0 instead.
+        stop_time = addminutes(
+            stop.service.departure_time,
+            stop.departure_time if i < len(route_nodes)-1
+            else stop.arrival_time or 0)
 
-        route.append(
-            [str(x) for x in (
-                stop.station,
-                stop.service,
-                stop_time)])
+        route.append([str(x) for x in (stop.station, stop.service, stop_time)])
 
     vals.update({'route':route if route else 'No route!'})
     return render_to_response('minivr/get_route.html', vals)
