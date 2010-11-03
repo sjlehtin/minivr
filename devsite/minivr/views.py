@@ -173,7 +173,7 @@ def get_route(request):
                     node.successors.append((next, timediff))
             else:
                 timediff += next.departure_time - node.arrival_time
-                if timediff <= findroute.TRAIN_SWITCH_TIME:
+                if 0 <= timediff <= findroute.TRAIN_SWITCH_TIME:
                     node.successors.append((next, timediff))
 
         # Secondly, one can continue in the same train, if it will ever depart.
