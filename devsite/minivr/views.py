@@ -214,19 +214,14 @@ def get_route(request):
         stop = Stop.objects.select_related().\
                             get(service = n.service_id, station = n.station_id)
 
-        if stop.departure_time:
-            stop_time = addminutes(
-                stop.service.departure_time,
-                stop.departure_time if i < len(route_nodes)-1
-                else stop.arrival_time)
-        else:
-            stop_time = stop.service.departure_time
+        # For the last node, use arrival_time. If we have only one node in the
+        # path, it may be None, in which case use 0 instead.
+        stop_time = addminutes(
+            stop.service.departure_time,
+            stop.departure_time if i < len(route_nodes)-1
+            else stop.arrival_time or 0)
 
-        route.append(
-            [str(x) for x in (
-                stop.station,
-                stop.service,
-                stop_time)])
+        route.append([str(x) for x in (stop.station, stop.service, stop_time)])
 
     vals.update({'route':route if route else 'No route!'})
     return render_to_response('minivr/get_route.html', vals)
