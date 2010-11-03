@@ -149,8 +149,8 @@ def get_route(request):
             node_dt = Service.objects.get(id = node.service_id).departure_time
             next_dt = Service.objects.get(id = next.service_id).departure_time
 
-            timediff = ((next_dt.minute - node_dt.minute)  * 60 + \
-                        (next_dt.second - node_dt.second)) / 60
+            timediff = ((next_dt.hour   - node_dt.hour) * 60 + \
+                        (next_dt.minute - node_dt.minute))
 
             # For the "from" station, there is no time limit, and the cost is
             # the difference between the departure times.
