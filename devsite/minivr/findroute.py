@@ -47,8 +47,8 @@ def get_route(from_station, all_stations, is_goal):
 
         cur = get_closest_node()
         if not cur:
-            raise ValueError("no path from %s to %s" % (from_station,
-                                                        to_station))
+            return []
+
         # The next closest node is the target node.
         if is_goal(cur):
             break
@@ -62,8 +62,7 @@ def get_route(from_station, all_stations, is_goal):
                 distances[neighbor] = new_distance
                 previous[neighbor] = cur
 
-    route = [to_station]
-    cur = to_station
+    route = [cur]
     while (cur in previous):
         cur = previous[cur]
         route.insert(0, cur)
@@ -145,7 +144,7 @@ class SimpleLinearTestCase(unittest.TestCase):
         route = test_get_route(b, c, [a, b, c])
         self.assertEqual(route, [b, c])
 
-    def testMustFailConnectionNotInSet(self):
+    def testNoRouteConnectionNotInSet(self):
         a = GraphNode("first")
         b = GraphNode("second")
         c = GraphNode("third")
@@ -154,7 +153,8 @@ class SimpleLinearTestCase(unittest.TestCase):
         b.add_connection(c, 2)
         c.add_connection(b, 2)
 
-        self.assertRaises(ValueError, test_get_route, a, c, [a, c])
+        route = test_get_route(a, c, [a, c])
+        self.assertEqual(route, [])
 
 class SmallGraphTestCase(unittest.TestCase):
     def setUp(self):
