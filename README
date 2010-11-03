@@ -27,7 +27,7 @@ Asenna Django [5] ja Pythonin psycopg2 [6].
 
 Tee projektia varten käyttäjätunnus ja tietokanta PostgreSQL [4] -palvelimelle:
 
-    $ psql -f create_database.sql
+    $ psql -f create_database.sql postgres
 
 Projektissa mukana tulevat asetukset:
   PostgreSQL-palvelin osoitteessa 127.0.0.1:5432.
@@ -37,6 +37,7 @@ Projektissa mukana tulevat asetukset:
 Alusta Djangon vaatimat setit tietokantaan:
 
     $ cd devsite
+    $ cat schedules.csv | python cvstofix.py > minivr/fixtures/initial_data.json
     $ python manage.py syncdb
 
 Linkkaa templatet /tmp-hakemistoon (asetukset vaativat absoluuttisen polun
@@ -48,7 +49,6 @@ Testaa että kaikki toimii:
 
     $ python manage.py runserver
     $ firefox http://127.0.0.1:8000/
-
 
 
 Viitteet
