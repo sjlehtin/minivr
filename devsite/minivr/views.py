@@ -183,10 +183,10 @@ def get_route(request):
 
         schedule = Service.objects.get(id = node.service_id).schedule
 
-        next_time = schedule.filter(departure_time__gt = node.departure_time).\
-                             aggregate(m = Min('departure_time'))['m']
+        next_time = schedule.filter(arrival_time__gt = node.departure_time).\
+                             aggregate(m = Min('arrival_time'))['m']
 
-        next_stop = schedule.filter(departure_time = next_time).\
+        next_stop = schedule.filter(arrival_time = next_time).\
                              values_list('service_id', 'station_id')
 
         assert len(next_stop) == 1
