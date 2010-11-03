@@ -41,7 +41,7 @@ def get_route(request):
 
     # Passed to the template even in the case of errors, so that it can fill in
     # the form with what the user previously input.
-    vals = dict((k,str(v)) for (k,v) in request.GET.iteritems())
+    vals = dict((k, unicode(v)) for (k,v) in request.GET.iteritems())
 
     error = False
     try:
