@@ -85,6 +85,9 @@ class Stop(models.Model):
     weekday_min = models.PositiveIntegerField(choices = DAYS)
     weekday_max = models.PositiveIntegerField(choices = DAYS)
 
+    def __unicode__(self):
+        return ' '.join([unicode(f) for f in (self.service, self.station)])
+
 class Train(models.Model):
     name  = models.CharField(max_length = 255)
     seats = models.PositiveIntegerField()
