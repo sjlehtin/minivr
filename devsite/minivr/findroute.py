@@ -26,14 +26,15 @@ class GraphNode(object):
 def get_route(from_station, all_stations, is_goal):
     """Get "shortest path" between two stations."""
 
-    if from_station not in all_stations:
+    stations = set(all_stations)
+
+    if from_station not in stations:
         raise ValueError("departure station must be in set of all stations")
 
     distances = {}
     previous = {}
     distances[from_station] = 0
 
-    stations = set(all_stations)
     while stations:
         def get_closest_node():
             candidates = filter(lambda x: x[0] in stations,
