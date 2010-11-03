@@ -23,17 +23,11 @@ class GraphNode(object):
     def __cmp__(self, other):
         return cmp(self.id, other.id)
 
-def get_route(from_station, to_station,
-              all_stations,
-              time_preference=None,
-              time_type=DEPARTURE):
-    """Get "shortest path" between two stations.  The weighting between
-    two vertices is done with a function."""
+def get_route(from_station, all_stations, is_goal):
+    """Get "shortest path" between two stations."""
 
     if from_station not in all_stations:
         raise ValueError("departure station must be in set of all stations")
-    if to_station not in all_stations:
-        raise ValueError("destination station must be in set of all stations")
 
     distances = {}
     previous = {}
@@ -55,7 +49,7 @@ def get_route(from_station, to_station,
             raise ValueError("no path from %s to %s" % (from_station,
                                                         to_station))
         # The next closest node is the target node.
-        if cur == to_station:
+        if is_goal(cur):
             break
 
         stations.remove(cur)
@@ -100,10 +94,13 @@ def get_route(from_station, to_station,
 #     return dist[] ;
 # end Dijkstra.
 
+def test_get_route(from_node, to_node, nodes):
+    return get_route(from_node, nodes, lambda node: node == to_node)
+
 class SimpleLinearTestCase(unittest.TestCase):
     def testRouteToSelf(self):
         a = GraphNode("first")
-        route = get_route(a, a, [a])
+        route = test_get_route(a, a, [a])
         self.assertEqual(route, [a])
 
     def testRouteToNeighbor(self):
@@ -111,7 +108,7 @@ class SimpleLinearTestCase(unittest.TestCase):
         b = GraphNode("second")
         a.add_connection(b, 1)
         b.add_connection(a, 1)
-        route = get_route(a, b, [a, b])
+        route = test_get_route(a, b, [a, b])
         self.assertEqual(route, [a, b])
 
     def testRouteToEnd(self):
@@ -122,7 +119,7 @@ class SimpleLinearTestCase(unittest.TestCase):
         b.add_connection(a, 1)
         b.add_connection(c, 1)
         c.add_connection(b, 1)
-        route = get_route(a, c, [a, b, c])
+        route = test_get_route(a, c, [a, b, c])
         self.assertEqual(route, [a, b, c])
 
     def testRouteFromBeginningToMiddle(self):
@@ -133,7 +130,7 @@ class SimpleLinearTestCase(unittest.TestCase):
         b.add_connection(a, 1)
         b.add_connection(c, 1)
         c.add_connection(b, 1)
-        route = get_route(a, b, [a, b, c])
+        route = test_get_route(a, b, [a, b, c])
         self.assertEqual(route, [a, b])
 
     def testRouteFromMiddleToEnd(self):
@@ -144,7 +141,7 @@ class SimpleLinearTestCase(unittest.TestCase):
         b.add_connection(a, 1)
         b.add_connection(c, 2)
         c.add_connection(b, 2)
-        route = get_route(b, c, [a, b, c])
+        route = test_get_route(b, c, [a, b, c])
         self.assertEqual(route, [b, c])
 
     def testMustFailConnectionNotInSet(self):
@@ -156,7 +153,7 @@ class SimpleLinearTestCase(unittest.TestCase):
         b.add_connection(c, 2)
         c.add_connection(b, 2)
 
-        self.assertRaises(ValueError, get_route, a, c, [a, c])
+        self.assertRaises(ValueError, test_get_route, a, c, [a, c])
 
 class SmallGraphTestCase(unittest.TestCase):
     def setUp(self):
@@ -198,28 +195,28 @@ class SmallGraphTestCase(unittest.TestCase):
         self.g = g
 
     def testBasic(self):
-        self.assertEqual(get_route(self.a, self.b, self.all_nodes),
+        self.assertEqual(test_get_route(self.a, self.b, self.all_nodes),
                          [self.a, self.d, self.b])
 
-        self.assertEqual(get_route(self.a, self.e, self.all_nodes),
+        self.assertEqual(test_get_route(self.a, self.e, self.all_nodes),
                          [self.a, self.d, self.e])
 
-        self.assertEqual(get_route(self.a, self.f, self.all_nodes),
+        self.assertEqual(test_get_route(self.a, self.f, self.all_nodes),
                          [self.a, self.d, self.f])
 
-        self.assertEqual(get_route(self.f, self.g, self.all_nodes),
+        self.assertEqual(test_get_route(self.f, self.g, self.all_nodes),
                          [self.f, self.g])
 
-        self.assertEqual(get_route(self.d, self.g, self.all_nodes),
+        self.assertEqual(test_get_route(self.d, self.g, self.all_nodes),
                          [self.d, self.e, self.g])
 
-        self.assertEqual(get_route(self.e, self.f, self.all_nodes),
+        self.assertEqual(test_get_route(self.e, self.f, self.all_nodes),
                          [self.e, self.g, self.f])
 
-        self.assertEqual(get_route(self.a, self.g, self.all_nodes),
+        self.assertEqual(test_get_route(self.a, self.g, self.all_nodes),
                          [self.a, self.d, self.e, self.g])
 
-        self.assertEqual(get_route(self.g, self.a, self.all_nodes),
+        self.assertEqual(test_get_route(self.g, self.a, self.all_nodes),
                          [self.g, self.e, self.d, self.a])
 
 class LargeGraphTestCase(unittest.TestCase):
