@@ -3,6 +3,10 @@ import unittest
 (DEPARTURE, ARRIVAL) = range(0, 2)
 
 class GraphNode(object):
+    """
+    This class describes the interface required from nodes handled by
+    get_route().  Used also in unittests, below.
+    """
     def __init__(self, id):
         self.id = id
         self.connections = []
