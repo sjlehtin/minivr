@@ -66,8 +66,8 @@ def get_route(from_station, all_stations, is_goal):
     route = [cur]
     while (cur in previous):
         cur = previous[cur]
+        assert(cur not in route)
         route.insert(0, cur)
-
     return route
 
 #  function Dijkstra(Graph, source):
