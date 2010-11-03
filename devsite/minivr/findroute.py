@@ -56,15 +56,15 @@ def get_route(from_station, all_stations, is_goal):
 
         stations.remove(cur)
 
-        for (neighbor, distance) in cur.get_connections():
+        for  neighbor, distance in cur.get_connections():
+            assert distance >= 0
             new_distance = distances[cur] + distance
-            if ((not neighbor in distances)
-                or (new_distance < distances[neighbor])):
+            if not neighbor in distances or new_distance < distances[neighbor]:
                 distances[neighbor] = new_distance
                 previous[neighbor] = cur
 
     route = [cur]
-    while (cur in previous):
+    while cur in previous:
         cur = previous[cur]
         route.insert(0, cur)
 
