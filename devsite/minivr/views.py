@@ -98,7 +98,8 @@ def get_route(request):
             '                 ON (minivr_stop.service_id = minivr_service.id)'
             '         INNER JOIN minivr_station'
             '                 ON (minivr_stop.station_id = minivr_station.id)'
-            '     WHERE UPPER(minivr_station.name::text) = UPPER(%s))'
+            '     WHERE UPPER(minivr_station.name::text) = UPPER(%s)'
+            '       AND minivr_stop.departure_time IS NOT NULL)'
             '  AS ts'
             #           Positive remainder of ts.t / (24*60)
             '  ORDER BY ts.t - (24*60) * floor(ts.t / (24*60)) ASC'
