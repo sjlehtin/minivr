@@ -14,8 +14,13 @@
     <p>Päivämäärä: <input type="text" name="y"  size="4" maxlength="4" value="{{ y }}">
                    <input type="text" name="mo" size="2" maxlength="2" value="{{ mo }}">
                    <input type="text" name="d"  size="2" maxlength="2" value="{{ d }}"></p>
-    <input type="radio" name="type" value="departure" checked="yes" id="departure"><label for="departure">Lähtöaika</label>
-    <input type="radio" name="type" value="arrival" id="arrival"><label for="arrival">Saapumisaika</label>
+    {% if type == 'arrival' %}
+        <input type="radio" name="type" value="departure" id="departure"><label for="departure">Lähtöaika</label>
+        <input type="radio" name="type" value="arrival" checked="yes" id="arrival"><label for="arrival">Saapumisaika</label>
+    {% else %}
+        <input type="radio" name="type" value="departure" checked="yes" id="departure"><label for="departure">Lähtöaika</label>
+        <input type="radio" name="type" value="arrival" id="arrival"><label for="arrival">Saapumisaika</label>
+    {% endif %}
     <input type="submit" value="Hae reitti">
 </form>
 
