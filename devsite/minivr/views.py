@@ -113,6 +113,10 @@ def get_route(request):
             '                 ON (minivr_stop.station_id = minivr_station.id)'
             '     WHERE UPPER(minivr_station.name::text) = UPPER(%%s)'
             '       AND minivr_service.free_seats > 0'
+
+            #       FIXME: this doesn't take into account the fact that the
+            #       time may wrap into another date. That's not as trivial to
+            #       handle as it may seem.
             '       AND (minivr_stop.year_min IS NULL'
             '            OR (    minivr_stop.year_min <= %%s'
             '                AND minivr_stop.year_max >= %%s'
@@ -179,6 +183,7 @@ def get_route(request):
             nodes[key] = node
         return node
 
+    # FIXME: like the raw SQL query above, this doesn't handle everything.
     stop_enabled_on_wanted_date = \
         Q(year_min__isnull = True) | \
         Q(year_min__lte    = wanted_year,
