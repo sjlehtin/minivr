@@ -190,7 +190,7 @@ def get_route(request):
                 stops = stops.filter(arrival_time__isnull = False)
 
             for stop in stops:
-                key = (stop.service, self.station_id)
+                key = (stop.service_id, self.station_id)
                 next = get_and_cache_node(key, stop)
 
                 assert next.station_id == self.station_id
@@ -256,7 +256,7 @@ def get_route(request):
                                 departure_time__lt = self.arrival_time).\
                          order_by('-departure_time')[0]
 
-            key = (self.service_id, next_stop.station)
+            key = (self.service_id, next_stop.station_id)
             next = get_and_cache_node(key, next_stop)
 
             assert next.service_id == self.service_id
@@ -349,11 +349,12 @@ def get_route(request):
             # There may be extra edges to the same station at the start (end)
             # of the route.
             if search_forwards:
-                while len(stops) > 1 and stops[0].station == stops[1].station:
+                while len(stops) > 1 and \
+                      stops[0].station_id == stops[1].station_id:
                     stops = stops[1:]
             else:
                 while len(stops) > 1 and \
-                      stops[-1].station == stops[-2].station:
+                      stops[-1].station_id == stops[-2].station_id:
                     stops = stops[:-1]
 
             start_stop = stops[0]
