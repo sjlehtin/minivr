@@ -181,7 +181,8 @@ def get_route(request):
                 next_dt = next.service_departure_time
 
                 timediff = ((next_dt.hour   - self_dt.hour) * 60 + \
-                            (next_dt.minute - self_dt.minute))
+                            (next_dt.minute - self_dt.minute)) + \
+                           next.departure_time
 
                 # For the "from" stop, there is no time limit, and the cost is
                 # the difference between the departure times.
@@ -189,8 +190,8 @@ def get_route(request):
 
                 if self.station_id == from_stop.station_id and \
                    self.service_id == from_stop.service_id:
-                    if timediff < 0:
-                        timediff += 24*60
+                    timediff -= self.departure_time
+                    timediff %= 24*60
                     self.successors.append((next, timediff))
 
                 # Don't bother adding train-switch edges for nodes that lack an
@@ -198,10 +199,8 @@ def get_route(request):
                 # the middle of the route, and there's no need to switch again
                 # immediately thereafter.
                 elif self.arrival_time != None:
-                    timediff += next.departure_time - self.arrival_time
-                    if timediff < 0:
-                        timediff += 24*60
-
+                    timediff -= self.arrival_time
+                    timediff %= 24*60
                     if timediff >= findroute.TRAIN_SWITCH_TIME:
                         self.successors.append((next, timediff))
 
