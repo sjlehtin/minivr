@@ -111,3 +111,7 @@ class Connection(models.Model):
     # An abstract value used to calculate ticket prices, which are specified as
     # price per unit of cost.
     cost = models.PositiveIntegerField()
+
+    def __unicode__(self):
+        return (unicode(self.out_of) + " -  " + unicode(self.to) + 
+                " %d km" % self.distance)
