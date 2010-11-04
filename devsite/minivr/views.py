@@ -1,6 +1,6 @@
 # coding=utf-8
 
-import datetime
+from decimal import Decimal
 
 from django.core.urlresolvers import reverse
 from django.db                import connection
@@ -10,7 +10,8 @@ from django.shortcuts         import render_to_response, get_object_or_404
 from django.template          import RequestContext
 
 from minivr                          import findroute
-from minivr.models                   import Service, Stop, Station, Connection
+from minivr.models                   import Ticket, Service, Stop, Station,\
+                                            Connection
 from minivr.templatetags.minivr_time import addminutes
 
 def index(request):
@@ -245,23 +246,33 @@ def get_route(request):
 
         def collapse_route(stops):
             class RouteNode:
-                def __init__(self, sstop, stime, estop, etime, cost):
+                def __init__(self, sstop, stime, estop, etime, price):
                     self.start_stop = sstop
                     self.start_time = stime
                     self.end_stop   = estop
                     self.end_time   = etime
-                    self.cost       = cost
+                    self.price      = price
 
                 def __key(self):
                     return (self.start_stop, self.start_time,
                             self.end_stop,   self.end_time,
-                            self.cost)
+                            self.price)
 
                 def __cmp__(self, other):
                     return cmp(self.__key(), other.__key())
 
             route = []
             def route_append(start, end, cost):
+
+                if cost == 0:
+                    price = 0
+                else:
+                    assert start.service_id == end.service_id
+                    price_per_cost =\
+                        Ticket.objects.get(service = start.service_id,
+                                           customer_type = 1).price_per_cost
+                    price = (cost * price_per_cost).quantize(Decimal('1.00'))
+
                 # For last nodes of a service, use arrival_time. If we have
                 # only one node in the path, it may be None, in which case
                 # use 0 instead.
@@ -274,7 +285,7 @@ def get_route(request):
                                            end.service.departure_time,
                                            (end.arrival_time if
                                             end.arrival_time else 0)),
-                                       cost))
+                                       price))
 
             # There may be an extra edge to the same station at the start of
             # the route.
@@ -284,12 +295,12 @@ def get_route(request):
 
             start_stop = stops[0]
             prev_stop = start_stop
-            total_cost = 0
+            service_cost = 0
             for ss in stops[1:]:
                 if start_stop.service_id != ss.service_id:
-                    route_append(start_stop, prev_stop, total_cost)
+                    route_append(start_stop, prev_stop, service_cost)
 
-                    total_cost = 0
+                    service_cost = 0
                     start_stop = ss
                     prev_stop = ss
                 else:
@@ -299,10 +310,10 @@ def get_route(request):
                     #                             prev_stop.station,
                     #                             ss.station,
                     #                             conn.cost)
-                    total_cost += conn.cost
+                    service_cost += conn.cost
                     prev_stop = ss
             else:
-                route_append(start_stop, ss, total_cost)
+                route_append(start_stop, prev_stop, service_cost)
 
             return route
 
