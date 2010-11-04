@@ -13,6 +13,8 @@
 \renewcommand{\lstlistingname}{Listaus}
 \renewcommand{\lstlistlistingname}{Listaukset}
 
+\usepackage{tikz}
+
 % European Computer Modern fonts, scalable Type1 instead of bitmap fonts
 \usepackage{ae}
 
@@ -85,7 +87,7 @@ Mikko Markus Torni $<$mtorni@cc.hut.fi$>$ (51161R) \\
 \parskip0.00cm % Ilman tätä tulee harva sisällysluettelo
 
 \tableofcontents
-%\listoffigures
+\listoffigures
 \lstlistoflistings
 
 \parskip0.23cm % Vasta \tableofcontents:n jälkeen, muuten tulee harva sisällysluettelo
@@ -125,6 +127,11 @@ Aiheeseen voi ottaa ideoita esim. VR:n sivuita.
 Valitsimme toteutukseen vapaan PostgreSQL\footnote{\url{http://www.postgresql.org/}}-tietokannan. PostgreSQL on ohjelmistosuunnittelijaystävällinen sekä tarjoaa suorituskykyä ja joustavan indeksoinnin.
 
 \subsection{ER-malli}
+
+\begin{figure}
+  \input{relations.out.tex}
+  \caption{ER-malli keskeisimmista relaatioista}
+\end{figure}
 
 \textbf{TODO:} ER-kaavio, jossa sallitaan ainoastaan kurssilla opetetut merkintätavat. Kurssi suosittelee kaavion piirtämiseen Dia-ohjelmistoa. Kaavion tulee olla sopusoinnussa tietokannan luontikomentojen kanssa. Nimien täytyy olla järkeviä.
 
