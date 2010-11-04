@@ -195,11 +195,11 @@ def get_route(request):
                 assert next.station_id == self.station_id
 
                 if search_forwards:
-                    prev_dt  = self.service_departure_time
-                    next_dt  = next.service_departure_time
+                    prev_dt = self.service_departure_time
+                    next_dt = next.service_departure_time
                 else:
-                    prev_dt  = next.service_departure_time
-                    next_dt  = self.service_departure_time
+                    prev_dt = next.service_departure_time
+                    next_dt = self.service_departure_time
 
                 timediff = (next_dt.hour   - prev_dt.hour) * 60 + \
                            (next_dt.minute - prev_dt.minute)
