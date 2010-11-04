@@ -11,6 +11,9 @@
     <p><label for="to">Mihin: </label><input type="text" name="to" id="to" value="{{ to }}"></p>
     <p>Kellonaika: <input type="text" name="h" size="2" maxlength="2" value="{{ h }}">
                    <input type="text" name="m" size="2" maxlength="2" value="{{ m }}"></p>
+    <p>Päivämäärä: <input type="text" name="y"  size="4" maxlength="4" value="{{ y }}">
+                   <input type="text" name="mo" size="2" maxlength="2" value="{{ mo }}">
+                   <input type="text" name="d"  size="2" maxlength="2" value="{{ d }}"></p>
     <input type="radio" name="type" value="departure" checked="yes" id="departure"><label for="departure">Lähtöaika</label>
     <input type="radio" name="type" value="arrival" id="arrival"><label for="arrival">Saapumisaika</label>
     <input type="submit" value="Hae reitti">

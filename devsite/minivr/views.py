@@ -1,6 +1,7 @@
 # coding=utf-8
 
-from decimal import Decimal
+from datetime import date
+from decimal  import Decimal
 
 from django.core.urlresolvers import reverse
 from django.db                import connection
@@ -56,7 +57,6 @@ def get_route(request):
     # Passed to the template even in the case of errors, so that it can fill in
     # the form with what the user previously input.
     vals = dict((k, unicode(v)) for (k,v) in request.GET.iteritems())
-    last_reserved = int(request.GET.get('last_reserved', -1))
 
     error = False
     try:
@@ -78,6 +78,14 @@ def get_route(request):
         wanted_minute = int(request.GET['m'])
         if not 0 <= wanted_minute < 60:
             raise ValueError
+
+        today = date.today()
+        wanted_year    = int(request.GET.get('y',  today.year))
+        wanted_month   = int(request.GET.get('mo', today.month))
+        wanted_day     = int(request.GET.get('d',  today.day))
+
+        wanted_weekday = \
+            date(wanted_year, wanted_month, wanted_day).isoweekday()
 
         # Minutes from midnight. This ensures that in the queries below, e.g.
         # 23:00 + 120 exceeds 21:00.
@@ -105,6 +113,13 @@ def get_route(request):
             '                 ON (minivr_stop.station_id = minivr_station.id)'
             '     WHERE UPPER(minivr_station.name::text) = UPPER(%%s)'
             '       AND minivr_service.free_seats > 0'
+            '       AND (minivr_stop.year_min IS NULL'
+            '            OR (    minivr_stop.year_min <= %%s'
+            '                AND minivr_stop.year_max >= %%s'
+            '                AND minivr_stop.month_min <= %%s'
+            '                AND minivr_stop.month_max >= %%s'
+            '                AND minivr_stop.weekday_min <= %%s'
+            '                AND minivr_stop.weekday_max >= %%s))'
             '       AND minivr_stop.departure_time IS NOT NULL)'
             '  AS ts'
             #           Positive remainder of ts.t / (24*60)
@@ -116,20 +131,25 @@ def get_route(request):
 
             query = query.replace('stop.departure_time', 'stop.arrival_time')
 
+        params = [wanted_time, from_station_name,
+                  wanted_year, wanted_year,
+                  wanted_month, wanted_month,
+                  wanted_weekday, wanted_weekday]
+
         cursor = connection.cursor()
-        cursor.execute(query % "DESC", [wanted_time, from_station_name])
+        cursor.execute(query % "DESC", params)
 
         # Drop t here instead of in the query, so that we can write just the
         # Kleene star instead of all the minivr_stop column names.
         from_stops_before = [Stop(*s[1:]) for s in cursor.fetchall()]
 
         if len(from_stops_before) == 0:
-            raise Station.DoesNotExist
+            raise Stop.DoesNotExist
 
         # Same thing again, but now grab ones immediately after instead of
         # before the given time.
         cursor = connection.cursor()
-        cursor.execute(query % "ASC", [wanted_time, from_station_name])
+        cursor.execute(query % "ASC", params)
         from_stops_after = [Stop(*s[1:]) for s in cursor.fetchall()]
 
         to_station = Station.objects.get(name__iexact = to_station_name)
@@ -143,6 +163,10 @@ def get_route(request):
     except Station.DoesNotExist:
         vals.update({'error': 'Asemaa ei löydy.'})
         error = True
+    except Stop.DoesNotExist:
+        vals.update({'error': 'Mikään vuoro ei pysähdy annetulla asemalla '
+                              'annettuna päivänä.'})
+        error = True
 
     if error:
         return render_to_response('get_route.html', vals)
@@ -154,6 +178,15 @@ def get_route(request):
             node = StopNode(stop)
             nodes[key] = node
         return node
+
+    stop_enabled_on_wanted_date = \
+        Q(year_min__isnull = True) | \
+        Q(year_min__lte    = wanted_year,
+          year_max__gte    = wanted_year,
+          month_min__lte   = wanted_month,
+          month_max__gte   = wanted_month,
+          weekday_min__lte = wanted_weekday,
+          weekday_max__gte = wanted_weekday)
 
     class StopNode(object):
         def __init__(self, stop):
@@ -191,14 +224,15 @@ def get_route(request):
 
             # There are two classes of successors for each node.
 
-            # Firstly, one can switch from one train to another non-full
+            # Firstly, one can switch from one train to another available
             # departing (arriving) one if the time between the first one's
             # arrival (departure) and the latter one's departure (arrival) is
             # short enough.
             stops = Stop.objects.select_related().\
-                                 exclude(service = self.service_id).\
-                                 filter (station = self.station_id,
-                                         service__free_seats__gt = 0)
+                         exclude(service = self.service_id).\
+                         filter (station = self.station_id,
+                                 service__free_seats__gt = 0).\
+                         filter (stop_enabled_on_wanted_date)
 
             if search_forwards:
                 stops = stops.filter(departure_time__isnull = False)
@@ -258,6 +292,7 @@ def get_route(request):
                     Stop.objects.select_related().\
                          filter(service = self.service_id,
                                 arrival_time__gt = self.departure_time).\
+                         filter(stop_enabled_on_wanted_date).\
                          order_by('arrival_time')[0]
             else:
                 if self.arrival_time == None:
@@ -268,6 +303,7 @@ def get_route(request):
                          filter(service = self.service_id,
                                 departure_time__isnull = False,
                                 departure_time__lt = self.arrival_time).\
+                         filter(stop_enabled_on_wanted_date).\
                          order_by('-departure_time')[0]
 
             key = (self.service_id, next_stop.station_id)
@@ -429,6 +465,6 @@ def get_route(request):
 
     get_routes(from_stops_after)
 
-    vals.update({'routes': routes, 'last_reserved': last_reserved})
+    vals.update({'routes': routes})
     return render_to_response('get_route.html', vals,
                               context_instance = RequestContext(request))
