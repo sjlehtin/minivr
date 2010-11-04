@@ -136,8 +136,8 @@ def get_route(request):
 
     class StopNode(object):
         def __init__(self, stop):
-            self.service_id             = stop.service.id
-            self.station_id             = stop.station.id
+            self.service_id             = stop.service_id
+            self.station_id             = stop.station_id
             self.arrival_time           = stop.arrival_time
             self.departure_time         = stop.departure_time
             self.service_departure_time = stop.service.departure_time
@@ -166,11 +166,10 @@ def get_route(request):
             # Firstly, one can switch from one train to another departing one
             # if the time between the first one's arrival and the latter one's
             # departure is short enough.
-            for stop in Stop.objects.\
+            for stop in Stop.objects.select_related().\
                              filter(station = self.station_id,
                                     departure_time__isnull = False).\
-                             exclude(service = self.service_id).\
-                             select_related():
+                             exclude(service = self.service_id):
 
                 key = (stop.service, self.station_id)
                 next = get_or_add(key, stop)
@@ -288,7 +287,7 @@ def get_route(request):
             prev_stop = start_stop
             total_cost = 0
             for ss in stops[1:]:
-                if start_stop.service.id != ss.service.id:
+                if start_stop.service_id != ss.service_id:
                     route_append(start_stop, prev_stop, total_cost)
 
                     total_cost = 0
