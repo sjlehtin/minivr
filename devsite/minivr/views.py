@@ -278,6 +278,7 @@ def get_route(request):
             self.successors.append((next, timediff))
 
     routes = []
+    costs_cache = {}
 
     def get_route(from_node, from_stop):
         route_nodes = findroute.get_route(
@@ -359,13 +360,15 @@ def get_route(request):
                     start_stop = ss
                     prev_stop = ss
                 else:
-                    conn = Connection.objects.\
-                        get(out_of = prev_stop.station, to = ss.station)
-                    # print "%s: %s -> %s: %d" % (ss.service,
-                    #                             prev_stop.station,
-                    #                             ss.station,
-                    #                             conn.cost)
-                    service_cost += conn.cost
+                    from_to = (prev_stop.station_id, ss.station_id)
+                    cost = costs_cache.get(from_to, None)
+                    if cost == None:
+                        [(cost,)] = Connection.objects.\
+                            filter(out_of = from_to[0], to = from_to[1]).\
+                            values_list('cost')
+                        costs_cache[from_to] = cost
+
+                    service_cost += cost
                     prev_stop = ss
             else:
                 route_append(start_stop, prev_stop, service_cost)
