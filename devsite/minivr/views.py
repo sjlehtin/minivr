@@ -210,7 +210,7 @@ def get_route(request):
             if self.departure_time == None:
                 return
 
-            next_stop = Stop.objects.\
+            next_stop = Stop.objects.select_related().\
                              filter(service = self.service_id,
                                     arrival_time__gt = self.departure_time).\
                              order_by('arrival_time')[0]
