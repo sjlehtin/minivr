@@ -132,7 +132,7 @@ def get_route(request):
             nodes[key] = node
         return node
 
-    from_station_id = None
+    from_stop = None
 
     class StopNode(object):
         def __init__(self, stop):
@@ -182,11 +182,12 @@ def get_route(request):
                 timediff = ((next_dt.hour   - self_dt.hour) * 60 + \
                             (next_dt.minute - self_dt.minute))
 
-                # For the "from" station, there is no time limit, and the cost
-                # is the difference between the departure times.
-                assert from_station_id != None
+                # For the "from" stop, there is no time limit, and the cost is
+                # the difference between the departure times.
+                assert from_stop != None
 
-                if self.station_id == from_station_id:
+                if self.station_id == from_stop.station_id and \
+                   self.service_id == from_stop.service_id:
                     if timediff < 0:
                         timediff += 24*60
                     self.successors.append((next, timediff))
@@ -233,8 +234,6 @@ def get_route(request):
 
     routes = []
     for from_stop in from_stops:
-        from_station_id = from_stop.station_id
-
         key = (from_stop.service_id, from_stop.station_id)
         route_nodes = findroute.get_route(
                           get_or_add(key, from_stop),
