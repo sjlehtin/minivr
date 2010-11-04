@@ -1,1 +1,9 @@
 *.pyc
+doc/minivr.aux
+doc/minivr.log
+doc/minivr.lol
+doc/minivr.lof
+doc/minivr.aux
+doc/minivr.out
+doc/minivr.pdf
+doc/minivr.toc
