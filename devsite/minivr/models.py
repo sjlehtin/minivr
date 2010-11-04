@@ -113,5 +113,5 @@ class Connection(models.Model):
     cost = models.PositiveIntegerField()
 
     def __unicode__(self):
-        return (unicode(self.out_of) + " -  " + unicode(self.to) + 
+        return (unicode(self.out_of) + " -  " + unicode(self.to) +
                 " %d km" % self.distance)

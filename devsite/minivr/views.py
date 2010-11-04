@@ -236,8 +236,8 @@ def get_route(request):
         nodes[from_stop], nodes.itervalues(),
         is_goal = lambda n: n.station_id == to_station.id)
 
-    route = [Stop.objects.select_related().get(service = nn.service_id, 
-                                               station = nn.station_id) 
+    route = [Stop.objects.select_related().get(service = nn.service_id,
+                                               station = nn.station_id)
              for nn in route_nodes]
 
     def collapse_route(stops):
@@ -253,7 +253,7 @@ def get_route(request):
                           'end_stop' : end,
                           'end_time' : addminutes(
                         end.service.departure_time,
-                        (end.arrival_time if 
+                        (end.arrival_time if
                          end.arrival_time else 0)),
                           'cost' : cost})
 
@@ -276,9 +276,9 @@ def get_route(request):
             else:
                 conn = Connection.objects.select_related().\
                     get(out_of = prev_stop.station, to = ss.station)
-                # print "%s: %s -> %s: %d" % (ss.service, 
+                # print "%s: %s -> %s: %d" % (ss.service,
                 #                             prev_stop.station,
-                #                             ss.station, 
+                #                             ss.station,
                 #                             conn.cost)
                 total_cost += conn.cost
                 prev_stop = ss
@@ -286,7 +286,7 @@ def get_route(request):
             route_append(start_stop, ss, total_cost)
 
         return route
-            
+
     route = collapse_route(route)
 
     vals.update({'route':route,
