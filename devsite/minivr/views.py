@@ -378,12 +378,18 @@ def get_route(request):
             return True
         return False
 
+    used_from_nodes = set()
+
     def get_routes(from_stops):
         count = 0
         for stop in from_stops:
 
             key = (stop.service_id, stop.station_id)
             node = get_or_add(key, stop)
+
+            if node in used_from_nodes:
+                continue
+            used_from_nodes.add(node)
 
             if get_route(node, stop):
                 count += 1
