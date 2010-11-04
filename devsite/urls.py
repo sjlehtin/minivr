@@ -3,7 +3,7 @@ from django.contrib import admin
 admin.autodiscover()
 
 urlpatterns = patterns('minivr.views',
-    (r'^$',                                            'index'),
+    (r'^$',                                            'get_route'),
     (r'^minivr/$',                                     'index'),
     (r'^minivr/route/$',                               'get_route'),
     (r'^minivr/service/(?P<service_id>\d+)/$',         'service_detail'),
