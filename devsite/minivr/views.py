@@ -9,7 +9,7 @@ from django.shortcuts         import render_to_response, get_object_or_404
 from django.template          import RequestContext
 
 from minivr                          import findroute
-from minivr.models                   import Service, Stop, Station
+from minivr.models                   import Service, Stop, Station, Connection
 from minivr.templatetags.minivr_time import addminutes
 
 def index(request):
@@ -209,10 +209,12 @@ def get_route(request):
         nodes[from_stop], nodes.itervalues(),
         is_goal = lambda n: n.station_id == to_station.id)
 
+    cost = 0
     route = []
+    prev_stop = None
     for i,n in enumerate(route_nodes):
         stop = Stop.objects.select_related().\
-                            get(service = n.service_id, station = n.station_id)
+            get(service = n.service_id, station = n.station_id)
 
         # For last nodes of a service, use arrival_time. If we have only one
         # node in the path, it may be None, in which case use 0 instead.
@@ -221,7 +223,15 @@ def get_route(request):
             stop.departure_time if stop.departure_time
             else stop.arrival_time or 0)
 
-        route.append([str(x) for x in (stop.station, stop.service, stop_time)])
+        # calculate the cost of traversing between stops.
+        if prev_stop:
+            conn = Connection.objects.select_related().\
+                get(out_of = prev_stop.station, to = stop.station)
+            cost += conn.cost
+        prev_stop = stop
 
-    vals.update({'route':route if route else 'No route!'})
+        route.append([str(x) for x in (stop.station, stop.service, 
+                                       stop_time)])
+
+    vals.update({'route':route if route else 'No route!', 'cost' : cost})
     return render_to_response('minivr/get_route.html', vals)
