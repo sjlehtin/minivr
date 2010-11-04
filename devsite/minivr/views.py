@@ -14,6 +14,8 @@ from minivr.models                   import Ticket, Service, Stop, Station,\
                                             Connection
 from minivr.templatetags.minivr_time import addminutes
 
+WANTED_ROUTE_COUNT = 3
+
 def index(request):
     services = Service.objects.\
                    filter(free_seats__gt = 0).\
@@ -98,8 +100,7 @@ def get_route(request):
             '       AND minivr_stop.departure_time IS NOT NULL)'
             '  AS ts'
             #           Positive remainder of ts.t / (24*60)
-            '  ORDER BY ts.t - (24*60) * floor(ts.t / (24*60)) %s'
-            '  LIMIT 3')
+            '  ORDER BY ts.t - (24*60) * floor(ts.t / (24*60)) %s')
 
         if not search_forwards:
             (from_station_name, to_station_name) = \
@@ -112,16 +113,16 @@ def get_route(request):
 
         # Drop t here instead of in the query, so that we can write just the
         # Kleene star instead of all the minivr_stop column names.
-        from_stops = [Stop(*s[1:]) for s in reversed(cursor.fetchall())]
+        from_stops_before = [Stop(*s[1:]) for s in cursor.fetchall()]
 
-        if len(from_stops) == 0:
+        if len(from_stops_before) == 0:
             raise Station.DoesNotExist
 
         # Same thing again, but now grab ones immediately after instead of
         # before the given time.
         cursor = connection.cursor()
         cursor.execute(query % "ASC", [time, from_station_name])
-        from_stops.extend(Stop(*s[1:]) for s in cursor.fetchall())
+        from_stops_after = [Stop(*s[1:]) for s in cursor.fetchall()]
 
         to_station = Station.objects.get(name__iexact = to_station_name)
 
@@ -277,12 +278,15 @@ def get_route(request):
             self.successors.append((next, timediff))
 
     routes = []
-    for from_stop in from_stops:
-        key = (from_stop.service_id, from_stop.station_id)
+
+    def get_route(from_node, from_stop):
         route_nodes = findroute.get_route(
-                          get_or_add(key, from_stop),
+                          from_node,
                           lambda n: n.station_id == to_station.id,
                           from_stop)
+
+        if not route_nodes:
+            return False
 
         route = [Stop.objects.select_related().get(service = nn.service_id,
                                                    station = nn.station_id)
@@ -371,6 +375,28 @@ def get_route(request):
         route = tuple(collapse_route(route))
         if not route in routes:
             routes.append(route)
+            return True
+        return False
+
+    def get_routes(from_stops):
+        count = 0
+        for stop in from_stops:
+
+            key = (stop.service_id, stop.station_id)
+            node = get_or_add(key, stop)
+
+            if get_route(node, stop):
+                count += 1
+                if count == WANTED_ROUTE_COUNT:
+                    break
+
+    get_routes(from_stops_before)
+
+    # from_stops_before is in descending order, but we want all our routes in
+    # ascending order.
+    routes.reverse()
+
+    get_routes(from_stops_after)
 
     vals.update({'routes': routes, 'last_reserved': last_reserved})
     return render_to_response('get_route.html', vals,
