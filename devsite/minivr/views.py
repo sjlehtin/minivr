@@ -288,7 +288,7 @@ def get_route(request):
                     start_stop = ss
                     prev_stop = ss
                 else:
-                    conn = Connection.objects.select_related().\
+                    conn = Connection.objects.\
                         get(out_of = prev_stop.station, to = ss.station)
                     # print "%s: %s -> %s: %d" % (ss.service,
                     #                             prev_stop.station,
