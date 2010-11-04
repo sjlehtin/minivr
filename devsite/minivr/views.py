@@ -100,7 +100,7 @@ def get_route(request):
             '  AS ts'
             '  WHERE ts.final_t >= %s'
             '  ORDER BY ts.final_t ASC'
-            '  LIMIT 1',
+            '  LIMIT 3',
             [from_station_name, time])
 
         from_stops = cursor.fetchall()
@@ -123,11 +123,7 @@ def get_route(request):
     if error:
         return render_to_response('get_route.html', vals)
 
-    # We can use an arbitrary starting stop since we can switch trains at
-    # zero cost anyway.
-    from_stop = from_stops[0]
-
-    from_stop_station_id = from_stop[1]
+    from_stop_station_ids = [s[1] for s in from_stops]
 
     class StopNode(object):
         def __init__(self, stop):
@@ -152,7 +148,7 @@ def get_route(request):
                        (other.service_id, other.station_id))
 
         def is_at_from(self):
-            return self.station_id == from_stop_station_id
+            return self.station_id in from_stop_station_ids
 
     all_stops = Stop.objects.order_by('service__id', '-departure_time')
     nodes = dict(((stop.service.id, stop.station.id), StopNode(stop))
@@ -232,64 +228,83 @@ def get_route(request):
 
         node.successors.append((next, timediff))
 
-    route_nodes = findroute.get_route(
-        nodes[from_stop], nodes.itervalues(),
-        is_goal = lambda n: n.station_id == to_station.id)
+    routes = []
+    for from_stop in from_stops:
+        route_nodes = findroute.get_route(
+            nodes[from_stop], nodes.itervalues(),
+            is_goal = lambda n: n.station_id == to_station.id)
 
-    route = [Stop.objects.select_related().get(service = nn.service_id,
-                                               station = nn.station_id)
-             for nn in route_nodes]
+        route = [Stop.objects.select_related().get(service = nn.service_id,
+                                                   station = nn.station_id)
+                 for nn in route_nodes]
 
-    def collapse_route(stops):
-        route = []
-        def route_append(start, end, cost):
-            # For last nodes of a service, use arrival_time. If we have
-            # only one node in the path, it may be None, in which case
-            # use 0 instead.
-            route.append({'start_stop' : start,
-                          'start_time' : addminutes(
-                        start.service.departure_time,
-                        start.departure_time),
-                          'end_stop' : end,
-                          'end_time' : addminutes(
-                        end.service.departure_time,
-                        (end.arrival_time if
-                         end.arrival_time else 0)),
-                          'cost' : cost})
+        def collapse_route(stops):
+            class RouteNode:
+                def __init__(self, sstop, stime, estop, etime, cost):
+                    self.start_stop = sstop
+                    self.start_time = stime
+                    self.end_stop   = estop
+                    self.end_time   = etime
+                    self.cost       = cost
 
-        # There may be an extra edge to the same station at the start of
-        # the route.
-        if len(stops) > 1:
-            if stops[0].station == stops[1].station:
-                stops = stops[1:]
+                def __key(self):
+                    return (self.start_stop, self.start_time,
+                            self.end_stop,   self.end_time,
+                            self.cost)
 
-        start_stop = stops[0]
-        prev_stop = start_stop
-        total_cost = 0
-        for ss in stops[1:]:
-            if start_stop.service.id != ss.service.id:
-                route_append(start_stop, prev_stop, total_cost)
+                def __cmp__(self, other):
+                    return cmp(self.__key(), other.__key())
 
-                total_cost = 0
-                start_stop = ss
-                prev_stop = ss
+            route = []
+            def route_append(start, end, cost):
+                # For last nodes of a service, use arrival_time. If we have
+                # only one node in the path, it may be None, in which case
+                # use 0 instead.
+                route.append(RouteNode(start,
+                                       addminutes(
+                                           start.service.departure_time,
+                                           start.departure_time),
+                                       end,
+                                       addminutes(
+                                           end.service.departure_time,
+                                           (end.arrival_time if
+                                            end.arrival_time else 0)),
+                                       cost))
+
+            # There may be an extra edge to the same station at the start of
+            # the route.
+            if len(stops) > 1:
+                if stops[0].station == stops[1].station:
+                    stops = stops[1:]
+
+            start_stop = stops[0]
+            prev_stop = start_stop
+            total_cost = 0
+            for ss in stops[1:]:
+                if start_stop.service.id != ss.service.id:
+                    route_append(start_stop, prev_stop, total_cost)
+
+                    total_cost = 0
+                    start_stop = ss
+                    prev_stop = ss
+                else:
+                    conn = Connection.objects.select_related().\
+                        get(out_of = prev_stop.station, to = ss.station)
+                    # print "%s: %s -> %s: %d" % (ss.service,
+                    #                             prev_stop.station,
+                    #                             ss.station,
+                    #                             conn.cost)
+                    total_cost += conn.cost
+                    prev_stop = ss
             else:
-                conn = Connection.objects.select_related().\
-                    get(out_of = prev_stop.station, to = ss.station)
-                # print "%s: %s -> %s: %d" % (ss.service,
-                #                             prev_stop.station,
-                #                             ss.station,
-                #                             conn.cost)
-                total_cost += conn.cost
-                prev_stop = ss
-        else:
-            route_append(start_stop, ss, total_cost)
+                route_append(start_stop, ss, total_cost)
 
-        return route
+            return route
 
-    route = collapse_route(route)
+        route = tuple(collapse_route(route))
+        if not route in routes:
+            routes.append(route)
 
-    vals.update({'route':route,
-                 'last_reserved' : last_reserved})
+    vals.update({'routes': routes, 'last_reserved': last_reserved})
     return render_to_response('get_route.html', vals,
                               context_instance = RequestContext(request))

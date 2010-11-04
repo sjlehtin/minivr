@@ -21,7 +21,8 @@
 <p><strong>{{ error }}</strong></p>
 {% endif %}
 
-{% if route != None %}
+{% for route in routes %}
+    <hr>
     <table>
         <thead>
         <tr>
@@ -46,8 +47,7 @@
 
             <td>{{ rr.end_stop.service.free_seats }}</td>
             <td>
-                <form action="/minivr/service/
-{{ rr.start_stop.service.id }}/reserve-simple/" method=post>
+                <form action="/minivr/service/{{ rr.start_stop.service.id }}/reserve-simple/" method=post>
                 {% csrf_token %}
                 <input type=submit value="Varaa">
                 </form>
@@ -56,8 +56,10 @@
         {% endfor %}
         </tbody>
     </table>
+{% endfor %}
+
+{% if not routes and routes != None %}
 <hr>
-{% else %}
 Ei reittiä!
 {% endif %}
 
