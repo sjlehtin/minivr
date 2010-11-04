@@ -231,8 +231,8 @@ def get_route(request):
     routes = []
     for from_stop in from_stops:
         route_nodes = findroute.get_route(
-            nodes[from_stop], nodes.itervalues(),
-            is_goal = lambda n: n.station_id == to_station.id)
+                          nodes[from_stop],
+                          lambda n: n.station_id == to_station.id)
 
         route = [Stop.objects.select_related().get(service = nn.service_id,
                                                    station = nn.station_id)
