@@ -63,13 +63,9 @@ def get_route(request):
         time_type         = request.GET['type']
 
         if time_type == 'departure':
-            time_type = findroute.DEPARTURE
+            search_forwards = True
         elif time_type == 'arrival':
-            time_type = findroute.ARRIVAL
-
-            # FIXME
-            vals.update({'error': 'FIXME: käänteisiä ei osata vielä'})
-            error = True
+            search_forwards = False
         else:
             raise ValueError
 
@@ -81,8 +77,9 @@ def get_route(request):
         # Django. Sorry, folks.
         #
         # Basically, we just want the (service_id,station_id) pairs
-        # corresponding to the given "from" station in order of time, near to
-        # the given time. (Either before or after depending on the sort order.)
+        # corresponding to the given "from" station in order of time, near
+        # to the given time. (Either before or after depending on the sort
+        # order.)
         query = (
             'SELECT * FROM'
             '  (SELECT'
@@ -103,6 +100,12 @@ def get_route(request):
             #           Positive remainder of ts.t / (24*60)
             '  ORDER BY ts.t - (24*60) * floor(ts.t / (24*60)) %s'
             '  LIMIT 3')
+
+        if not search_forwards:
+            (from_station_name, to_station_name) = \
+                (to_station_name, from_station_name)
+
+            query = query.replace('stop.departure_time', 'stop.arrival_time')
 
         cursor = connection.cursor()
         cursor.execute(query % "DESC", [time, from_station_name])
@@ -174,71 +177,102 @@ def get_route(request):
 
             # There are two classes of successors for each node.
 
-            # Firstly, one can switch from one train to another departing one
-            # if the time between the first one's arrival and the latter one's
-            # departure is short enough.
-            for stop in Stop.objects.select_related().\
-                             filter(station = self.station_id,
-                                    departure_time__isnull = False).\
-                             exclude(service = self.service_id):
+            # Firstly, one can switch from one train to another departing
+            # (arriving) one if the time between the first one's arrival
+            # (departure) and the latter one's departure (arrival) is short
+            # enough.
+            stops = Stop.objects.select_related().\
+                                 exclude(service = self.service_id).\
+                                 filter (station = self.station_id)
 
+            if search_forwards:
+                stops = stops.filter(departure_time__isnull = False)
+            else:
+                stops = stops.filter(arrival_time__isnull = False)
+
+            for stop in stops:
                 key = (stop.service, self.station_id)
                 next = get_or_add(key, stop)
 
                 assert next.station_id == self.station_id
 
-                self_dt = self.service_departure_time
-                next_dt = next.service_departure_time
+                if search_forwards:
+                    prev_dt  = self.service_departure_time
+                    next_dt  = next.service_departure_time
+                    timediff = next.departure_time
 
-                timediff = ((next_dt.hour   - self_dt.hour) * 60 + \
-                            (next_dt.minute - self_dt.minute)) + \
-                           next.departure_time
+                    from_time  = self.departure_time
+                    other_time = self.arrival_time
+                else:
+                    prev_dt  = next.service_departure_time
+                    next_dt  = self.service_departure_time
+                    timediff = self.arrival_time
+
+                    from_time  = next.arrival_time
+                    other_time = next.departure_time
+
+                timediff += (next_dt.hour   - prev_dt.hour) * 60 + \
+                            (next_dt.minute - prev_dt.minute)
 
                 # For the "from" stop, there is no time limit, and the cost is
-                # the difference between the departure times.
-                assert from_stop != None
-
+                # the difference between the departure (arrival) times.
                 if self.station_id == from_stop.station_id and \
                    self.service_id == from_stop.service_id:
-                    timediff -= self.departure_time
+                    timediff -= from_time
                     timediff %= 24*60
                     self.successors.append((next, timediff))
 
                 # Don't bother adding train-switch edges for nodes that lack an
-                # arrival time: we can only enter them by switching trains in
-                # the middle of the route, and there's no need to switch again
-                # immediately thereafter.
-                elif self.arrival_time != None:
-                    timediff -= self.arrival_time
+                # arrival (departure) time: we can only enter them by switching
+                # trains in the middle of the route, and there's no need to
+                # switch again immediately thereafter.
+                elif other_time != None:
+                    timediff -= other_time
                     timediff %= 24*60
                     if timediff >= findroute.TRAIN_SWITCH_TIME:
                         self.successors.append((next, timediff))
 
             # Secondly, one can continue in the same train, if it will ever
-            # depart.
+            # depart (arrive).
 
-            if self.departure_time == None:
-                return
+            if search_forwards:
+                if self.departure_time == None:
+                    return
 
-            next_stop = Stop.objects.select_related().\
-                             filter(service = self.service_id,
-                                    arrival_time__gt = self.departure_time).\
-                             order_by('arrival_time')[0]
+                next_stop =\
+                    Stop.objects.select_related().\
+                         filter(service = self.service_id,
+                                arrival_time__gt = self.departure_time).\
+                         order_by('arrival_time')[0]
+            else:
+                if self.arrival_time == None:
+                    return
+
+                next_stop =\
+                    Stop.objects.select_related().\
+                         filter(service = self.service_id,
+                                departure_time__isnull = False,
+                                departure_time__lt = self.arrival_time).\
+                         order_by('-departure_time')[0]
 
             key = (self.service_id, next_stop.station)
             next = get_or_add(key, next_stop)
 
             assert next.service_id == self.service_id
 
-            # By default, use the difference between the arrival times, because
-            # we need to include the wait time at a station.
+            # By default, use the difference between the arrival (departure)
+            # times, because we need to include the wait time at a station.
             #
-            # But if the arrival time is null, we're at the start of a service:
-            # we've already handled the waiting as part of the train switch
-            # (which may be the zero-cost start of the route), so use the
-            # departure time.
-            timediff = next.arrival_time - \
-                       (self.arrival_time or self.departure_time)
+            # But if the arrival (departure) time is null, we're at the start
+            # (end) of a service: we've already handled the waiting as part of
+            # the train switch (which may be the zero-cost start of the route),
+            # so use the departure (arrival) time.
+            if search_forwards:
+                timediff = next.arrival_time - \
+                           (self.arrival_time or self.departure_time)
+            else:
+                timediff = (self.departure_time or self.arrival_time) - \
+                           next.departure_time
 
             self.successors.append((next, timediff))
 
@@ -252,6 +286,9 @@ def get_route(request):
         route = [Stop.objects.select_related().get(service = nn.service_id,
                                                    station = nn.station_id)
                  for nn in route_nodes]
+
+        if not search_forwards:
+            route.reverse()
 
         def collapse_route(stops):
             class RouteNode:
@@ -296,10 +333,15 @@ def get_route(request):
                                             end.arrival_time else 0)),
                                        price))
 
-            # There may be extra edges to the same station at the start of the
-            # route.
-            while len(stops) > 1 and stops[0].station == stops[1].station:
-                stops = stops[1:]
+            # There may be extra edges to the same station at the start (end)
+            # of the route.
+            if search_forwards:
+                while len(stops) > 1 and stops[0].station == stops[1].station:
+                    stops = stops[1:]
+            else:
+                while len(stops) > 1 and \
+                      stops[-1].station == stops[-2].station:
+                    stops = stops[:-1]
 
             start_stop = stops[0]
             prev_stop = start_stop

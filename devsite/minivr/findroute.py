@@ -1,6 +1,5 @@
 import unittest
 
-(DEPARTURE, ARRIVAL) = range(0, 2)
 TRAIN_SWITCH_TIME = 5
 
 class GraphNode(object):
