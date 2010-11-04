@@ -215,7 +215,7 @@ def get_route(request):
                                     arrival_time__gt = self.departure_time).\
                              order_by('arrival_time')[0]
 
-            key = (self.service_id, stop.station)
+            key = (self.service_id, next_stop.station)
             next = get_or_add(key, next_stop)
 
             assert next.service_id == self.service_id
