@@ -256,7 +256,13 @@ def get_route(request):
                         (end.arrival_time if 
                          end.arrival_time else 0)),
                           'cost' : cost})
-            
+
+	# There may be an extra edge to the same station at the start of
+        # the route.
+        if len(stops) > 1:
+            if stops[0].station == stops[1].station:
+                stops = stops[1:]
+
         start_stop = stops[0]
         prev_stop = start_stop
         total_cost = 0
