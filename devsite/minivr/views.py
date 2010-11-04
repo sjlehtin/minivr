@@ -18,14 +18,14 @@ def index(request):
                    order_by('departure_time')
     last_reserved = int(request.GET.get('last_reserved', -1))
     return render_to_response(
-        'minivr/index.html',
+        'index.html',
         {'services':services, 'last_reserved':last_reserved},
         context_instance = RequestContext(request))
 
 def service_detail(request, service_id):
     service = get_object_or_404(Service, id = service_id)
     stops = service.schedule.order_by('departure_time')
-    return render_to_response('minivr/service_detail.html',
+    return render_to_response('service_detail.html',
                               {'service':service, 'stops':stops})
 
 def service_reserve(request, service_id):
@@ -37,7 +37,7 @@ def service_reserve(request, service_id):
 
 def get_route(request):
     if not request.GET:
-        return render_to_response('minivr/get_route.html')
+        return render_to_response('get_route.html')
 
     # Passed to the template even in the case of errors, so that it can fill in
     # the form with what the user previously input.
@@ -94,7 +94,7 @@ def get_route(request):
         error = True
 
     if error:
-        return render_to_response('minivr/get_route.html', vals)
+        return render_to_response('get_route.html', vals)
 
     # We can use an arbitrary starting stop since we can switch trains at
     # zero cost anyway.
@@ -234,4 +234,4 @@ def get_route(request):
                                        stop_time)])
 
     vals.update({'route':route if route else 'No route!', 'cost' : cost})
-    return render_to_response('minivr/get_route.html', vals)
+    return render_to_response('get_route.html', vals)
