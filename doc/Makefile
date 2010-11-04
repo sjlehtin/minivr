@@ -5,7 +5,7 @@
 all: minivr.pdf
 
 minivr.sql:
-	../devsite/manage.py sqlall minivr > $@
+	$(PYTHON) ../devsite/manage.py sqlall minivr > $@
 
 minivr.pdf: minivr.sql relations.out.tex
 
