@@ -80,9 +80,9 @@ def get_route(request):
             raise ValueError
 
         today = date.today()
-        wanted_year    = int(request.GET.get('y',  today.year))
-        wanted_month   = int(request.GET.get('mo', today.month))
-        wanted_day     = int(request.GET.get('d',  today.day))
+        wanted_year  = int(request.GET.get('y')  or today.year)
+        wanted_month = int(request.GET.get('mo') or today.month)
+        wanted_day   = int(request.GET.get('d')  or today.day)
 
         wanted_weekday = \
             date(wanted_year, wanted_month, wanted_day).isoweekday()
