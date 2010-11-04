@@ -87,10 +87,12 @@ def get_route(request):
         cursor.execute(
             'SELECT * FROM'
             '  (SELECT'
-            '     (60 * extract(hour  from minivr_service.departure_time)'
+            '     (60 * extract(hour   from minivr_service.departure_time)'
             '       +   extract(minute from minivr_service.departure_time)'
-            '       + minivr_stop.departure_time)::int'
-            '     AS final_t, minivr_stop.*'
+            '       + minivr_stop.departure_time'
+            '       - %s)'
+            '     AS t,'
+            '     minivr_stop.*'
             '     FROM minivr_stop'
             '         INNER JOIN minivr_service'
             '                 ON (minivr_stop.service_id = minivr_service.id)'
@@ -98,13 +100,13 @@ def get_route(request):
             '                 ON (minivr_stop.station_id = minivr_station.id)'
             '     WHERE UPPER(minivr_station.name::text) = UPPER(%s))'
             '  AS ts'
-            '  WHERE ts.final_t >= %s'
-            '  ORDER BY ts.final_t ASC'
+            #           Positive remainder of ts.t / (24*60)
+            '  ORDER BY ts.t - (24*60) * floor(ts.t / (24*60)) ASC'
             '  LIMIT 3',
-            [from_station_name, time])
+            [time, from_station_name])
 
-        # Drop final_t here instead of in the query, so that we can write just
-        # the Kleene star instead of all the minivr_stop column names.
+        # Drop t here instead of in the query, so that we can write just the
+        # Kleene star instead of all the minivr_stop column names.
         from_stops = [Stop(*s[1:]) for s in cursor.fetchall()]
 
         if len(from_stops) == 0:
