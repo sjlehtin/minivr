@@ -150,7 +150,7 @@ def get_route(request):
         def is_at_from(self):
             return self.station_id in from_stop_station_ids
 
-    all_stops = Stop.objects.order_by('service__id', '-departure_time')
+    all_stops = Stop.objects.order_by('service__id', '-departure_time').select_related()
     nodes = dict(((stop.service.id, stop.station.id), StopNode(stop))
                  for stop in all_stops)
 
