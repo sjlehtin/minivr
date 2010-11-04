@@ -78,10 +78,9 @@ def get_route(request):
         # This query is too complicated for me to be able to map it into
         # Django. Sorry, folks.
         #
-        # Basically, we just want the (service_id,station_id) pairs
-        # corresponding to the given "from" station in order of time, near
-        # to the given time. (Either before or after depending on the sort
-        # order.)
+        # Basically, we just want the valid (service_id,station_id) pairs
+        # corresponding to the given "from" station in order of time, near to
+        # the given time. (Either before or after depending on the sort order.)
         query = (
             'SELECT * FROM'
             '  (SELECT'
@@ -97,6 +96,7 @@ def get_route(request):
             '         INNER JOIN minivr_station'
             '                 ON (minivr_stop.station_id = minivr_station.id)'
             '     WHERE UPPER(minivr_station.name::text) = UPPER(%%s)'
+            '       AND minivr_service.free_seats > 0'
             '       AND minivr_stop.departure_time IS NOT NULL)'
             '  AS ts'
             #           Positive remainder of ts.t / (24*60)
@@ -183,13 +183,14 @@ def get_route(request):
 
             # There are two classes of successors for each node.
 
-            # Firstly, one can switch from one train to another departing
-            # (arriving) one if the time between the first one's arrival
-            # (departure) and the latter one's departure (arrival) is short
-            # enough.
+            # Firstly, one can switch from one train to another non-full
+            # departing (arriving) one if the time between the first one's
+            # arrival (departure) and the latter one's departure (arrival) is
+            # short enough.
             stops = Stop.objects.select_related().\
                                  exclude(service = self.service_id).\
-                                 filter (station = self.station_id)
+                                 filter (station = self.station_id,
+                                         service__free_seats__gt = 0)
 
             if search_forwards:
                 stops = stops.filter(departure_time__isnull = False)
