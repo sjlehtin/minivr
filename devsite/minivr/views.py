@@ -199,35 +199,37 @@ def get_route(request):
                 if search_forwards:
                     prev_dt  = self.service_departure_time
                     next_dt  = next.service_departure_time
-                    timediff = next.departure_time
-
-                    from_time  = self.departure_time
-                    other_time = self.arrival_time
                 else:
                     prev_dt  = next.service_departure_time
                     next_dt  = self.service_departure_time
-                    timediff = self.arrival_time
 
-                    from_time  = next.arrival_time
-                    other_time = next.departure_time
-
-                timediff += (next_dt.hour   - prev_dt.hour) * 60 + \
-                            (next_dt.minute - prev_dt.minute)
+                timediff = (next_dt.hour   - prev_dt.hour) * 60 + \
+                           (next_dt.minute - prev_dt.minute)
 
                 # For the "from" stop, there is no time limit, and the cost is
                 # the difference between the departure (arrival) times.
                 if self.station_id == from_stop.station_id and \
                    self.service_id == from_stop.service_id:
-                    timediff -= from_time
+
+                    if search_forwards:
+                        timediff += next.departure_time - self.departure_time
+                    else:
+                        timediff += self.arrival_time - next.arrival_time
+
                     timediff %= 24*60
                     self.successors.append((next, timediff))
 
-                # Don't bother adding train-switch edges for nodes that lack an
-                # arrival (departure) time: we can only enter them by switching
-                # trains in the middle of the route, and there's no need to
-                # switch again immediately thereafter.
-                elif other_time != None:
-                    timediff -= other_time
+                # Don't bother adding train-switch edges for non-"from" nodes
+                # that lack an arrival (departure) time: we can only enter them
+                # by switching trains in the middle of the route, and there's
+                # no need to switch again immediately thereafter.
+                elif (self.arrival_time if search_forwards
+                                        else self.departure_time) != None:
+                    if search_forwards:
+                        timediff += next.departure_time - self.arrival_time
+                    else:
+                        timediff += self.departure_time - next.arrival_time
+
                     timediff %= 24*60
                     if timediff >= findroute.TRAIN_SWITCH_TIME:
                         self.successors.append((next, timediff))
