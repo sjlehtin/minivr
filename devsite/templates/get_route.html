@@ -22,9 +22,43 @@
 {% endif %}
 
 {% if route != None %}
+    <table>
+        <thead>
+        <tr>
+            <th>Vuoro</th>
+            <th>Lähtöasema</th>
+            <th>Lähtöaika</th>
+            <th>Pääteasema</th>
+            <th>Saapuu</th>
+            <th>Hinta</th>
+            <th colspan=2>Paikkoja vapaana</th>
+        </tr>
+        </thead>
+        <tbody>
+        {% for rr in route %}
+        <tr>
+            <td><a href="/minivr/service/{{ rr.start_stop.service.id }}/">{{ rr.start_stop.service }}</a></td>
+            <td>{{ rr.start_stop.station }}</td>
+            <td>{{ rr.start_time|time:"H:i" }}</td>
+            <td>{{ rr.end_stop.station }}</td>
+            <td>{{ rr.end_time|time:"H:i" }}</td>
+            <td>{{ rr.cost }}</td>
+
+            <td>{{ rr.end_stop.service.free_seats }}</td>
+            <td>
+                <form action="/minivr/service/
+{{ rr.start_stop.service.id }}/reserve-simple/" method=post>
+                {% csrf_token %}
+                <input type=submit value="Varaa">
+                </form>
+            </td>
+        </tr>
+        {% endfor %}
+        </tbody>
+    </table>
 <hr>
-{{ route }}
-{{ cost }}
+{% else %}
+Ei reittiä!
 {% endif %}
 
 </body>

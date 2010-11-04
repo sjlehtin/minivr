@@ -36,6 +36,16 @@ def service_reserve(request, service_id):
     service.save()
     return HttpResponseRedirect(url)
 
+def service_reserve_simple(request, service_id):
+    """
+    Reserve from route planning.
+    """
+    service = get_object_or_404(Service, id = service_id)
+    service.free_seats -= 1
+    service.save()
+    return render_to_response('reserve_simple.html',
+                              {'service':service})
+
 def get_route(request):
     if not request.GET:
         return render_to_response('get_route.html')
@@ -43,6 +53,7 @@ def get_route(request):
     # Passed to the template even in the case of errors, so that it can fill in
     # the form with what the user previously input.
     vals = dict((k, unicode(v)) for (k,v) in request.GET.iteritems())
+    last_reserved = int(request.GET.get('last_reserved', -1))
 
     error = False
     try:
@@ -225,29 +236,54 @@ def get_route(request):
         nodes[from_stop], nodes.itervalues(),
         is_goal = lambda n: n.station_id == to_station.id)
 
-    cost = 0
-    route = []
-    prev_stop = None
-    for i,n in enumerate(route_nodes):
-        stop = Stop.objects.select_related().\
-            get(service = n.service_id, station = n.station_id)
+    route = [Stop.objects.select_related().get(service = nn.service_id, 
+                                               station = nn.station_id) 
+             for nn in route_nodes]
 
-        # For last nodes of a service, use arrival_time. If we have only one
-        # node in the path, it may be None, in which case use 0 instead.
-        stop_time = addminutes(
-            stop.service.departure_time,
-            stop.departure_time if stop.departure_time
-            else stop.arrival_time or 0)
+    def collapse_route(stops):
+        route = []
+        def route_append(start, end, cost):
+            # For last nodes of a service, use arrival_time. If we have
+            # only one node in the path, it may be None, in which case
+            # use 0 instead.
+            route.append({'start_stop' : start,
+                          'start_time' : addminutes(
+                        start.service.departure_time,
+                        start.departure_time),
+                          'end_stop' : end,
+                          'end_time' : addminutes(
+                        end.service.departure_time,
+                        (end.arrival_time if 
+                         end.arrival_time else 0)),
+                          'cost' : cost})
+            
+        start_stop = stops[0]
+        prev_stop = start_stop
+        total_cost = 0
+        for ss in stops[1:]:
+            if start_stop.service.id != ss.service.id:
+                route_append(start_stop, prev_stop, total_cost)
 
-        # calculate the cost of traversing between stops.
-        if prev_stop:
-            conn = Connection.objects.select_related().\
-                get(out_of = prev_stop.station, to = stop.station)
-            cost += conn.cost
-        prev_stop = stop
+                total_cost = 0
+                start_stop = ss
+                prev_stop = ss
+            else:
+                conn = Connection.objects.select_related().\
+                    get(out_of = prev_stop.station, to = ss.station)
+                # print "%s: %s -> %s: %d" % (ss.service, 
+                #                             prev_stop.station,
+                #                             ss.station, 
+                #                             conn.cost)
+                total_cost += conn.cost
+                prev_stop = ss
+        else:
+            route_append(start_stop, ss, total_cost)
 
-        route.append([str(x) for x in (stop.station, stop.service, 
-                                       stop_time)])
+        return route
+            
+    route = collapse_route(route)
 
-    vals.update({'route':route if route else 'No route!', 'cost' : cost})
-    return render_to_response('get_route.html', vals)
+    vals.update({'route':route,
+                 'last_reserved' : last_reserved})
+    return render_to_response('get_route.html', vals,
+                              context_instance = RequestContext(request))
