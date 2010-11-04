@@ -146,8 +146,6 @@ def get_route(request):
             nodes[key] = node
         return node
 
-    from_stop = None
-
     class StopNode(object):
         def __init__(self, stop):
             self.service_id             = stop.service_id
@@ -167,12 +165,12 @@ def get_route(request):
             return cmp(( self.service_id,  self.station_id),
                        (other.service_id, other.station_id))
 
-        def get_connections(self):
+        def get_connections(self, from_stop):
             if self.successors == None:
-                self.__compute_successors()
+                self.__compute_successors(from_stop)
             return self.successors
 
-        def __compute_successors(self):
+        def __compute_successors(self, from_stop):
             self.successors = []
 
             # There are two classes of successors for each node.
@@ -283,7 +281,8 @@ def get_route(request):
         key = (from_stop.service_id, from_stop.station_id)
         route_nodes = findroute.get_route(
                           get_or_add(key, from_stop),
-                          lambda n: n.station_id == to_station.id)
+                          lambda n: n.station_id == to_station.id,
+                          from_stop)
 
         route = [Stop.objects.select_related().get(service = nn.service_id,
                                                    station = nn.station_id)

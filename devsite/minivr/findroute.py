@@ -23,7 +23,7 @@ class GraphNode(object):
     def __cmp__(self, other):
         return cmp(self.id, other.id)
 
-def get_route(from_node, is_goal):
+def get_route(from_node, is_goal, *connections_args):
     """Get the shortest path from the starting node to the nearest goal."""
 
     visited = set()
@@ -51,7 +51,7 @@ def get_route(from_node, is_goal):
 
         visited.add(cur)
 
-        for neighbor, distance in cur.get_connections():
+        for neighbor, distance in cur.get_connections(*connections_args):
             assert distance >= 0
             new_distance = distances[cur] + distance
             if not neighbor in distances or new_distance < distances[neighbor]:
