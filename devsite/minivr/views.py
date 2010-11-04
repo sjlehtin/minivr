@@ -155,6 +155,8 @@ def get_route(request):
             self.departure_time         = stop.departure_time
             self.service_departure_time = stop.service.departure_time
             self.successors             = None
+            self.from_node              = None
+            self.previous               = None
 
         def __hash__(self):
             return hash((self.service_id, self.station_id))
@@ -166,12 +168,17 @@ def get_route(request):
             return cmp(( self.service_id,  self.station_id),
                        (other.service_id, other.station_id))
 
-        def get_connections(self, from_stop):
-            if self.successors == None:
-                self.__compute_successors(from_stop)
+        def get_connections(self, from_node):
+            if self.successors == None or \
+               (self.from_node != from_node and \
+                (self == from_node or self == self.from_node)):
+
+                self.from_node = from_node
+                self.__compute_successors()
+
             return self.successors
 
-        def __compute_successors(self, from_stop):
+        def __compute_successors(self):
             self.successors = []
 
             # There are two classes of successors for each node.
@@ -207,9 +214,7 @@ def get_route(request):
 
                 # For the "from" stop, there is no time limit, and the cost is
                 # the difference between the departure (arrival) times.
-                if self.station_id == from_stop.station_id and \
-                   self.service_id == from_stop.service_id:
-
+                if self == self.from_node:
                     if search_forwards:
                         timediff += next.departure_time - self.departure_time
                     else:
@@ -281,11 +286,11 @@ def get_route(request):
     costs_cache = {}
     stops_cache = {}
 
-    def get_route(from_node, from_stop):
+    def get_route(from_node):
         route_nodes = findroute.get_route(
                           from_node,
                           lambda n: n.station_id == to_station.id,
-                          from_stop)
+                          from_node)
 
         if not route_nodes:
             return False
@@ -402,7 +407,7 @@ def get_route(request):
                 continue
             used_from_nodes.add(node)
 
-            if get_route(node, stop):
+            if get_route(node):
                 count += 1
                 if count == WANTED_ROUTE_COUNT:
                     break

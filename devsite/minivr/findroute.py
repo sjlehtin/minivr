@@ -9,6 +9,7 @@ class GraphNode(object):
     """
     def __init__(self, id):
         self.id = id
+        self.previous = None
         self.connections = []
 
     def add_connection(self, neighbor, cost):
@@ -28,22 +29,14 @@ def get_route(from_node, is_goal, *connections_args):
 
     visited = set()
     distances = {}
-    previous = {}
     distances[from_node] = 0
 
     while True:
-        def get_closest_node():
-            candidates = filter(lambda x: x[0] not in visited,
-                                distances.iteritems())
-            if not candidates:
-                return None
-            closest_nodes = [nn[0] for nn in
-                             sorted(candidates, key=lambda x: x[1])]
-            return closest_nodes[0]
-
-        cur = get_closest_node()
-        if not cur:
+        if not distances:
             return []
+
+        cur = (nn[0] for nn in sorted(distances.iteritems(),
+                                      key = lambda x: x[1])).next()
 
         # The next closest node is the target node.
         if is_goal(cur):
@@ -54,14 +47,18 @@ def get_route(from_node, is_goal, *connections_args):
         for neighbor, distance in cur.get_connections(*connections_args):
             assert distance >= 0
             new_distance = distances[cur] + distance
-            if not neighbor in distances or new_distance < distances[neighbor]:
+            old_distance = distances.get(neighbor, None)
+            if (old_distance == None or new_distance < old_distance) and \
+               not neighbor in visited:
                 distances[neighbor] = new_distance
-                previous[neighbor] = cur
+                neighbor.previous   = cur
+
+        del distances[cur]
 
     route = [cur]
-    while cur in previous:
-        cur = previous[cur]
-        assert(cur not in route)
+    while cur != from_node:
+        cur = cur.previous
+        assert cur not in route
         route.insert(0, cur)
     return route
 
