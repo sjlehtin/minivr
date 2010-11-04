@@ -71,9 +71,17 @@ def get_route(request):
         else:
             raise ValueError
 
+        wanted_hour = int(request.GET['h'])
+        if not 0 <= wanted_hour < 24:
+            raise ValueError
+
+        wanted_minute = int(request.GET['m'])
+        if not 0 <= wanted_minute < 60:
+            raise ValueError
+
         # Minutes from midnight. This ensures that in the queries below, e.g.
         # 23:00 + 120 exceeds 21:00.
-        wanted_time = int(request.GET['h']) * 60 + int(request.GET['m'])
+        wanted_time = wanted_hour * 60 + wanted_minute
 
         # This query is too complicated for me to be able to map it into
         # Django. Sorry, folks.
