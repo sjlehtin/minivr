@@ -81,16 +81,15 @@ def get_route(request):
         # Django. Sorry, folks.
         #
         # Basically, we just want the (service_id,station_id) pairs
-        # corresponding to the given "from" station in order of time, starting
-        # from the given time.
-        cursor = connection.cursor()
-        cursor.execute(
+        # corresponding to the given "from" station in order of time, near to
+        # the given time. (Either before or after depending on the sort order.)
+        query = (
             'SELECT * FROM'
             '  (SELECT'
             '     (60 * extract(hour   from minivr_service.departure_time)'
             '       +   extract(minute from minivr_service.departure_time)'
             '       + minivr_stop.departure_time'
-            '       - %s)'
+            '       - %%s)'
             '     AS t,'
             '     minivr_stop.*'
             '     FROM minivr_stop'
@@ -98,20 +97,28 @@ def get_route(request):
             '                 ON (minivr_stop.service_id = minivr_service.id)'
             '         INNER JOIN minivr_station'
             '                 ON (minivr_stop.station_id = minivr_station.id)'
-            '     WHERE UPPER(minivr_station.name::text) = UPPER(%s)'
+            '     WHERE UPPER(minivr_station.name::text) = UPPER(%%s)'
             '       AND minivr_stop.departure_time IS NOT NULL)'
             '  AS ts'
             #           Positive remainder of ts.t / (24*60)
-            '  ORDER BY ts.t - (24*60) * floor(ts.t / (24*60)) ASC'
-            '  LIMIT 3',
-            [time, from_station_name])
+            '  ORDER BY ts.t - (24*60) * floor(ts.t / (24*60)) %s'
+            '  LIMIT 3')
+
+        cursor = connection.cursor()
+        cursor.execute(query % "DESC", [time, from_station_name])
 
         # Drop t here instead of in the query, so that we can write just the
         # Kleene star instead of all the minivr_stop column names.
-        from_stops = [Stop(*s[1:]) for s in cursor.fetchall()]
+        from_stops = [Stop(*s[1:]) for s in reversed(cursor.fetchall())]
 
         if len(from_stops) == 0:
             raise Station.DoesNotExist
+
+        # Same thing again, but now grab ones immediately after instead of
+        # before the given time.
+        cursor = connection.cursor()
+        cursor.execute(query % "ASC", [time, from_station_name])
+        from_stops.extend(Stop(*s[1:]) for s in cursor.fetchall())
 
         to_station = Station.objects.get(name__iexact = to_station_name)
 
