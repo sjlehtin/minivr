@@ -127,14 +127,7 @@ def get_route(request):
         def is_at_from(self):
             return self.station_id == from_stop_station_id
 
-    # The filter is to ignore route starting stops which aren't at our "from"
-    # stations. (This could be doing more sophisticated rejection, but this is
-    # just necessary to avoid an error when adding successors.)
-    all_stops = Stop.objects.\
-                    order_by('service__id', '-departure_time').\
-                    filter( Q(station = from_stop_station_id) | \
-                           ~Q(arrival_time = None))
-
+    all_stops = Stop.objects.order_by('service__id', '-departure_time')
     nodes = dict(((stop.service.id, stop.station.id), StopNode(stop))
                  for stop in all_stops)
 
@@ -167,15 +160,20 @@ def get_route(request):
             # For the "from" station, there is no time limit, and the cost is
             # the difference between the departure times.
             if node.is_at_from():
-                # FIXME: we have to reject negative weights here because
-                # Dijkstra's algorithm can't handle them. Either switch
-                # algorithms or figure out a better way of looking at trains
-                # before the target time.
-                if timediff >= 0:
-                    node.successors.append((next, timediff))
-            else:
+                if timediff < 0:
+                    timediff += 24*60
+                node.successors.append((next, timediff))
+
+            # Don't bother adding train-switch edges for nodes that lack an
+            # arrival time: we can only enter them by switching trains in the
+            # middle of the route, and there's no need to switch again
+            # immediately thereafter.
+            elif node.arrival_time != None:
                 timediff += next.departure_time - node.arrival_time
-                if 0 <= timediff <= findroute.TRAIN_SWITCH_TIME:
+                if timediff < 0:
+                    timediff += 24*60
+
+                if timediff >= findroute.TRAIN_SWITCH_TIME:
                     node.successors.append((next, timediff))
 
         # Secondly, one can continue in the same train, if it will ever depart.
@@ -199,11 +197,11 @@ def get_route(request):
         # By default, use the difference between the arrival times, because we
         # need to include the wait time at a station.
         #
-        # But if we're at the "from" station, use the departure time, because
-        # the passenger doesn't have to wait at the station.
-        timediff =\
-            next.arrival_time - \
-            (node.departure_time if node.is_at_from() else node.arrival_time)
+        # But if the arrival time is null, we're at the start of a service:
+        # we've already handled the waiting as part of the train switch (which
+        # may be the zero-cost start of the route), so use the departure time.
+        timediff = next.arrival_time - \
+                   (node.arrival_time or node.departure_time)
 
         node.successors.append((next, timediff))
 
@@ -216,11 +214,11 @@ def get_route(request):
         stop = Stop.objects.select_related().\
                             get(service = n.service_id, station = n.station_id)
 
-        # For the last node, use arrival_time. If we have only one node in the
-        # path, it may be None, in which case use 0 instead.
+        # For last nodes of a service, use arrival_time. If we have only one
+        # node in the path, it may be None, in which case use 0 instead.
         stop_time = addminutes(
             stop.service.departure_time,
-            stop.departure_time if i < len(route_nodes)-1
+            stop.departure_time if stop.departure_time
             else stop.arrival_time or 0)
 
         route.append([str(x) for x in (stop.station, stop.service, stop_time)])
