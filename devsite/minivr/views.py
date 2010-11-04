@@ -279,6 +279,7 @@ def get_route(request):
 
     routes = []
     costs_cache = {}
+    stops_cache = {}
 
     def get_route(from_node, from_stop):
         route_nodes = findroute.get_route(
@@ -289,9 +290,15 @@ def get_route(request):
         if not route_nodes:
             return False
 
-        route = [Stop.objects.select_related().get(service = nn.service_id,
-                                                   station = nn.station_id)
-                 for nn in route_nodes]
+        route = []
+        for node in route_nodes:
+            key = (node.service_id, node.station_id)
+            stop = stops_cache.get(key, None)
+            if stop == None:
+                stop = Stop.objects.select_related().get(service = key[0],
+                                                         station = key[1])
+                stops_cache[key] = stop
+            route.append(stop)
 
         if not search_forwards:
             route.reverse()
