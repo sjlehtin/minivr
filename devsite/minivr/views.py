@@ -14,6 +14,8 @@ from minivr.models                   import Ticket, Service, Stop, Station,\
                                             Connection
 from minivr.templatetags.minivr_time import addminutes
 
+WANTED_ROUTE_COUNT = 3
+
 def index(request):
     services = Service.objects.\
                    filter(free_seats__gt = 0).\
@@ -63,34 +65,30 @@ def get_route(request):
         time_type         = request.GET['type']
 
         if time_type == 'departure':
-            time_type = findroute.DEPARTURE
+            search_forwards = True
         elif time_type == 'arrival':
-            time_type = findroute.ARRIVAL
-
-            # FIXME
-            vals.update({'error': 'FIXME: käänteisiä ei osata vielä'})
-            error = True
+            search_forwards = False
         else:
             raise ValueError
 
         # Minutes from midnight. This ensures that in the queries below, e.g.
         # 23:00 + 120 exceeds 21:00.
-        time = int(request.GET['h']) * 60 + int(request.GET['m'])
+        wanted_time = int(request.GET['h']) * 60 + int(request.GET['m'])
 
         # This query is too complicated for me to be able to map it into
         # Django. Sorry, folks.
         #
         # Basically, we just want the (service_id,station_id) pairs
-        # corresponding to the given "from" station in order of time, starting
-        # from the given time.
-        cursor = connection.cursor()
-        cursor.execute(
+        # corresponding to the given "from" station in order of time, near
+        # to the given time. (Either before or after depending on the sort
+        # order.)
+        query = (
             'SELECT * FROM'
             '  (SELECT'
             '     (60 * extract(hour   from minivr_service.departure_time)'
             '       +   extract(minute from minivr_service.departure_time)'
             '       + minivr_stop.departure_time'
-            '       - %s)'
+            '       - %%s)'
             '     AS t,'
             '     minivr_stop.*'
             '     FROM minivr_stop'
@@ -98,19 +96,33 @@ def get_route(request):
             '                 ON (minivr_stop.service_id = minivr_service.id)'
             '         INNER JOIN minivr_station'
             '                 ON (minivr_stop.station_id = minivr_station.id)'
-            '     WHERE UPPER(minivr_station.name::text) = UPPER(%s))'
+            '     WHERE UPPER(minivr_station.name::text) = UPPER(%%s)'
+            '       AND minivr_stop.departure_time IS NOT NULL)'
             '  AS ts'
             #           Positive remainder of ts.t / (24*60)
-            '  ORDER BY ts.t - (24*60) * floor(ts.t / (24*60)) ASC'
-            '  LIMIT 3',
-            [time, from_station_name])
+            '  ORDER BY ts.t - (24*60) * floor(ts.t / (24*60)) %s')
+
+        if not search_forwards:
+            (from_station_name, to_station_name) = \
+                (to_station_name, from_station_name)
+
+            query = query.replace('stop.departure_time', 'stop.arrival_time')
+
+        cursor = connection.cursor()
+        cursor.execute(query % "DESC", [wanted_time, from_station_name])
 
         # Drop t here instead of in the query, so that we can write just the
         # Kleene star instead of all the minivr_stop column names.
-        from_stops = [Stop(*s[1:]) for s in cursor.fetchall()]
+        from_stops_before = [Stop(*s[1:]) for s in cursor.fetchall()]
 
-        if len(from_stops) == 0:
+        if len(from_stops_before) == 0:
             raise Station.DoesNotExist
+
+        # Same thing again, but now grab ones immediately after instead of
+        # before the given time.
+        cursor = connection.cursor()
+        cursor.execute(query % "ASC", [wanted_time, from_station_name])
+        from_stops_after = [Stop(*s[1:]) for s in cursor.fetchall()]
 
         to_station = Station.objects.get(name__iexact = to_station_name)
 
@@ -128,14 +140,12 @@ def get_route(request):
         return render_to_response('get_route.html', vals)
 
     nodes = {}
-    def get_or_add(key, stop):
+    def get_and_cache_node(key, stop):
         node = nodes.get(key, None)
         if node == None:
             node = StopNode(stop)
             nodes[key] = node
         return node
-
-    from_stop = None
 
     class StopNode(object):
         def __init__(self, stop):
@@ -156,94 +166,142 @@ def get_route(request):
             return cmp(( self.service_id,  self.station_id),
                        (other.service_id, other.station_id))
 
-        def get_connections(self):
+        def get_connections(self, from_stop):
             if self.successors == None:
-                self.__compute_successors()
+                self.__compute_successors(from_stop)
             return self.successors
 
-        def __compute_successors(self):
+        def __compute_successors(self, from_stop):
             self.successors = []
 
             # There are two classes of successors for each node.
 
-            # Firstly, one can switch from one train to another departing one
-            # if the time between the first one's arrival and the latter one's
-            # departure is short enough.
-            for stop in Stop.objects.select_related().\
-                             filter(station = self.station_id,
-                                    departure_time__isnull = False).\
-                             exclude(service = self.service_id):
+            # Firstly, one can switch from one train to another departing
+            # (arriving) one if the time between the first one's arrival
+            # (departure) and the latter one's departure (arrival) is short
+            # enough.
+            stops = Stop.objects.select_related().\
+                                 exclude(service = self.service_id).\
+                                 filter (station = self.station_id)
 
-                key = (stop.service, self.station_id)
-                next = get_or_add(key, stop)
+            if search_forwards:
+                stops = stops.filter(departure_time__isnull = False)
+            else:
+                stops = stops.filter(arrival_time__isnull = False)
+
+            for stop in stops:
+                key = (stop.service_id, self.station_id)
+                next = get_and_cache_node(key, stop)
 
                 assert next.station_id == self.station_id
 
-                self_dt = self.service_departure_time
-                next_dt = next.service_departure_time
+                if search_forwards:
+                    prev_dt = self.service_departure_time
+                    next_dt = next.service_departure_time
+                else:
+                    prev_dt = next.service_departure_time
+                    next_dt = self.service_departure_time
 
-                timediff = ((next_dt.hour   - self_dt.hour) * 60 + \
-                            (next_dt.minute - self_dt.minute)) + \
-                           next.departure_time
+                timediff = (next_dt.hour   - prev_dt.hour) * 60 + \
+                           (next_dt.minute - prev_dt.minute)
 
                 # For the "from" stop, there is no time limit, and the cost is
-                # the difference between the departure times.
-                assert from_stop != None
-
+                # the difference between the departure (arrival) times.
                 if self.station_id == from_stop.station_id and \
                    self.service_id == from_stop.service_id:
-                    timediff -= self.departure_time
+
+                    if search_forwards:
+                        timediff += next.departure_time - self.departure_time
+                    else:
+                        timediff += self.arrival_time - next.arrival_time
+
                     timediff %= 24*60
                     self.successors.append((next, timediff))
 
-                # Don't bother adding train-switch edges for nodes that lack an
-                # arrival time: we can only enter them by switching trains in
-                # the middle of the route, and there's no need to switch again
-                # immediately thereafter.
-                elif self.arrival_time != None:
-                    timediff -= self.arrival_time
+                # Don't bother adding train-switch edges for non-"from" nodes
+                # that lack an arrival (departure) time: we can only enter them
+                # by switching trains in the middle of the route, and there's
+                # no need to switch again immediately thereafter.
+                elif (self.arrival_time if search_forwards
+                                        else self.departure_time) != None:
+                    if search_forwards:
+                        timediff += next.departure_time - self.arrival_time
+                    else:
+                        timediff += self.departure_time - next.arrival_time
+
                     timediff %= 24*60
                     if timediff >= findroute.TRAIN_SWITCH_TIME:
                         self.successors.append((next, timediff))
 
             # Secondly, one can continue in the same train, if it will ever
-            # depart.
+            # depart (arrive).
 
-            if self.departure_time == None:
-                return
+            if search_forwards:
+                if self.departure_time == None:
+                    return
 
-            next_stop = Stop.objects.select_related().\
-                             filter(service = self.service_id,
-                                    arrival_time__gt = self.departure_time).\
-                             order_by('arrival_time')[0]
+                next_stop =\
+                    Stop.objects.select_related().\
+                         filter(service = self.service_id,
+                                arrival_time__gt = self.departure_time).\
+                         order_by('arrival_time')[0]
+            else:
+                if self.arrival_time == None:
+                    return
 
-            key = (self.service_id, next_stop.station)
-            next = get_or_add(key, next_stop)
+                next_stop =\
+                    Stop.objects.select_related().\
+                         filter(service = self.service_id,
+                                departure_time__isnull = False,
+                                departure_time__lt = self.arrival_time).\
+                         order_by('-departure_time')[0]
+
+            key = (self.service_id, next_stop.station_id)
+            next = get_and_cache_node(key, next_stop)
 
             assert next.service_id == self.service_id
 
-            # By default, use the difference between the arrival times, because
-            # we need to include the wait time at a station.
+            # By default, use the difference between the arrival (departure)
+            # times, because we need to include the wait time at a station.
             #
-            # But if the arrival time is null, we're at the start of a service:
-            # we've already handled the waiting as part of the train switch
-            # (which may be the zero-cost start of the route), so use the
-            # departure time.
-            timediff = next.arrival_time - \
-                       (self.arrival_time or self.departure_time)
+            # But if the arrival (departure) time is null, we're at the start
+            # (end) of a service: we've already handled the waiting as part of
+            # the train switch (which may be the zero-cost start of the route),
+            # so use the departure (arrival) time.
+            if search_forwards:
+                timediff = next.arrival_time - \
+                           (self.arrival_time or self.departure_time)
+            else:
+                timediff = (self.departure_time or self.arrival_time) - \
+                           next.departure_time
 
             self.successors.append((next, timediff))
 
     routes = []
-    for from_stop in from_stops:
-        key = (from_stop.service_id, from_stop.station_id)
-        route_nodes = findroute.get_route(
-                          get_or_add(key, from_stop),
-                          lambda n: n.station_id == to_station.id)
+    costs_cache = {}
+    stops_cache = {}
 
-        route = [Stop.objects.select_related().get(service = nn.service_id,
-                                                   station = nn.station_id)
-                 for nn in route_nodes]
+    def get_route(from_node, from_stop):
+        route_nodes = findroute.get_route(
+                          from_node,
+                          lambda n: n.station_id == to_station.id,
+                          from_stop)
+
+        if not route_nodes:
+            return False
+
+        route = []
+        for node in route_nodes:
+            key = (node.service_id, node.station_id)
+            stop = stops_cache.get(key, None)
+            if stop == None:
+                stop = Stop.objects.select_related().get(service = key[0],
+                                                         station = key[1])
+                stops_cache[key] = stop
+            route.append(stop)
+
+        if not search_forwards:
+            route.reverse()
 
         def collapse_route(stops):
             class RouteNode:
@@ -288,10 +346,16 @@ def get_route(request):
                                             end.arrival_time else 0)),
                                        price))
 
-            # There may be extra edges to the same station at the start of the
-            # route.
-            while len(stops) > 1 and stops[0].station == stops[1].station:
-                stops = stops[1:]
+            # There may be extra edges to the same station at the start (end)
+            # of the route.
+            if search_forwards:
+                while len(stops) > 1 and \
+                      stops[0].station_id == stops[1].station_id:
+                    stops = stops[1:]
+            else:
+                while len(stops) > 1 and \
+                      stops[-1].station_id == stops[-2].station_id:
+                    stops = stops[:-1]
 
             start_stop = stops[0]
             prev_stop = start_stop
@@ -304,13 +368,15 @@ def get_route(request):
                     start_stop = ss
                     prev_stop = ss
                 else:
-                    conn = Connection.objects.\
-                        get(out_of = prev_stop.station, to = ss.station)
-                    # print "%s: %s -> %s: %d" % (ss.service,
-                    #                             prev_stop.station,
-                    #                             ss.station,
-                    #                             conn.cost)
-                    service_cost += conn.cost
+                    from_to = (prev_stop.station_id, ss.station_id)
+                    cost = costs_cache.get(from_to, None)
+                    if cost == None:
+                        [(cost,)] = Connection.objects.\
+                            filter(out_of = from_to[0], to = from_to[1]).\
+                            values_list('cost')
+                        costs_cache[from_to] = cost
+
+                    service_cost += cost
                     prev_stop = ss
             else:
                 route_append(start_stop, prev_stop, service_cost)
@@ -320,6 +386,34 @@ def get_route(request):
         route = tuple(collapse_route(route))
         if not route in routes:
             routes.append(route)
+            return True
+        return False
+
+    used_from_nodes = set()
+
+    def get_routes(from_stops):
+        count = 0
+        for stop in from_stops:
+
+            key = (stop.service_id, stop.station_id)
+            node = get_and_cache_node(key, stop)
+
+            if node in used_from_nodes:
+                continue
+            used_from_nodes.add(node)
+
+            if get_route(node, stop):
+                count += 1
+                if count == WANTED_ROUTE_COUNT:
+                    break
+
+    get_routes(from_stops_before)
+
+    # from_stops_before is in descending order, but we want all our routes in
+    # ascending order.
+    routes.reverse()
+
+    get_routes(from_stops_after)
 
     vals.update({'routes': routes, 'last_reserved': last_reserved})
     return render_to_response('get_route.html', vals,
