@@ -73,7 +73,7 @@ def get_route(request):
 
         # Minutes from midnight. This ensures that in the queries below, e.g.
         # 23:00 + 120 exceeds 21:00.
-        time = int(request.GET['h']) * 60 + int(request.GET['m'])
+        wanted_time = int(request.GET['h']) * 60 + int(request.GET['m'])
 
         # This query is too complicated for me to be able to map it into
         # Django. Sorry, folks.
@@ -109,7 +109,7 @@ def get_route(request):
             query = query.replace('stop.departure_time', 'stop.arrival_time')
 
         cursor = connection.cursor()
-        cursor.execute(query % "DESC", [time, from_station_name])
+        cursor.execute(query % "DESC", [wanted_time, from_station_name])
 
         # Drop t here instead of in the query, so that we can write just the
         # Kleene star instead of all the minivr_stop column names.
@@ -121,7 +121,7 @@ def get_route(request):
         # Same thing again, but now grab ones immediately after instead of
         # before the given time.
         cursor = connection.cursor()
-        cursor.execute(query % "ASC", [time, from_station_name])
+        cursor.execute(query % "ASC", [wanted_time, from_station_name])
         from_stops_after = [Stop(*s[1:]) for s in cursor.fetchall()]
 
         to_station = Station.objects.get(name__iexact = to_station_name)
