@@ -140,7 +140,7 @@ def get_route(request):
         return render_to_response('get_route.html', vals)
 
     nodes = {}
-    def get_or_add(key, stop):
+    def get_and_cache_node(key, stop):
         node = nodes.get(key, None)
         if node == None:
             node = StopNode(stop)
@@ -191,7 +191,7 @@ def get_route(request):
 
             for stop in stops:
                 key = (stop.service, self.station_id)
-                next = get_or_add(key, stop)
+                next = get_and_cache_node(key, stop)
 
                 assert next.station_id == self.station_id
 
@@ -257,7 +257,7 @@ def get_route(request):
                          order_by('-departure_time')[0]
 
             key = (self.service_id, next_stop.station)
-            next = get_or_add(key, next_stop)
+            next = get_and_cache_node(key, next_stop)
 
             assert next.service_id == self.service_id
 
@@ -388,7 +388,7 @@ def get_route(request):
         for stop in from_stops:
 
             key = (stop.service_id, stop.station_id)
-            node = get_or_add(key, stop)
+            node = get_and_cache_node(key, stop)
 
             if node in used_from_nodes:
                 continue
