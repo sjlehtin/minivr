@@ -3,6 +3,7 @@
 import datetime
 
 from django.core.urlresolvers import reverse
+from django.db                import connection
 from django.db.models         import F, Q, Min
 from django.http              import HttpResponseRedirect
 from django.shortcuts         import render_to_response, get_object_or_404
@@ -47,8 +48,6 @@ def get_route(request):
     try:
         from_station_name = request.GET['from']
         to_station_name   = request.GET['to']
-        time              = datetime.time(hour   = int(request.GET['h']),
-                                          minute = int(request.GET['m']))
         time_type         = request.GET['type']
 
         if time_type == 'departure':
@@ -62,26 +61,43 @@ def get_route(request):
         else:
             raise ValueError
 
-        # Django doesn't understand intervals, so we have to do this manually.
-        #
-        # The silly 'free_seats = free_seats' is just to get a join on the
-        # Service table, ensuring correct input for the manually done bit.
-        from_stops = Stop.objects.\
-                filter(station__name__iexact = from_station_name,
-                       service__free_seats = F('service__free_seats')).\
-                extra(
-                    where = [
-                        'minivr_service.departure_time ' + \
-                        '   + (minivr_stop.departure_time ' + \
-                        "      * '1 minute'::interval) = %s"
-                    ],
-                    params = [time]).\
-                values_list('service_id', 'station_id')
+        # Minutes from midnight. This ensures that in the queries below, e.g.
+        # 23:00 + 120 exceeds 21:00.
+        time = int(request.GET['h']) * 60 + int(request.GET['m'])
 
-        to_station = Station.objects.get(name__iexact = to_station_name)
+        # This query is too complicated for me to be able to map it into
+        # Django. Sorry, folks.
+        #
+        # Basically, we just want the (service_id,station_id) pairs
+        # corresponding to the given "from" station in order of time, starting
+        # from the given time.
+        cursor = connection.cursor()
+        cursor.execute(
+            'SELECT service_id, station_id FROM'
+            '  (SELECT 60 * extract(hour   from minivr_service.departure_time)'
+            '           +   extract(minute from minivr_service.departure_time)'
+            '           + minivr_stop.departure_time'
+            '          AS final_t,'
+            '          minivr_service.id AS service_id,'
+            '          minivr_station.id AS station_id'
+            '     FROM minivr_stop'
+            '         INNER JOIN minivr_service'
+            '                 ON (minivr_stop.service_id = minivr_service.id)'
+            '         INNER JOIN minivr_station'
+            '                 ON (minivr_stop.station_id = minivr_station.id)'
+            '     WHERE UPPER(minivr_station.name::text) = UPPER(%s))'
+            '  AS ts'
+            '  WHERE ts.final_t >= %s'
+            '  ORDER BY ts.final_t ASC'
+            '  LIMIT 1',
+            [from_station_name, time])
+
+        from_stops = cursor.fetchall()
 
         if len(from_stops) == 0:
             raise Station.DoesNotExist
+
+        to_station = Station.objects.get(name__iexact = to_station_name)
 
     except KeyError:
         vals.update({'error': 'Puutteellinen syöte.'})
