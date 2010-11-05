@@ -53,9 +53,14 @@ def service_reserve_simple(request, service_id):
 
 def list_stations(request):
     stations = Station.objects.order_by('name')
+    L = []
+    for letter in sorted(set([x.name[0] for x in stations])):
+        SL = [x for x in stations if x.name.startswith(letter)]
+        L.append((letter, list(sorted(SL))))
+
     return render_to_response(
             'list_stations.html',
-            {'stations':stations})
+            {'stations':stations, 'stations_by_initial':L})
 
 def get_route(request):
     # Passed to the template even in the case of errors, so that it can fill in

@@ -6,10 +6,18 @@
 </head>
 <body>
 <h1>Asemat</h1>
+<p>
+{% for letter, stations in stations_by_initial %}
+<a href="#{{ letter }}">{{ letter }}</a>
+{% endfor %}
+</p>
+{% for letter, stations in stations_by_initial %}
+<h2><a name="{{ letter }}" href="#">{{ letter }}</a></h2>
 <ul>
 {% for station in stations %}
 <li>{{ station.name }}
 {% endfor %}
 </ul>
+{% endfor %}
 </body>
 </html>
