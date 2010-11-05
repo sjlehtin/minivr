@@ -111,7 +111,7 @@ Valitsimme kurssin T-76.1143 annetuista harjoitustyöaiheista junayhtiön tietoj
 
 \begin{quotation}
 \itshape
-Asiakkaat voivat hakea palvelun kautta juna-aikatauluja, ja varata lippuja (jotka ovat haettavissa asemalta lähdettäessä), mikäli niitä on jäljellä. Lippujen hinnat riippuvat pääteasemista, junavuorosta sekä ostajan statuksesta (opiskelija/aikuinen jne.). Eri junavuoroilla on omat lähtö -ja päätepysäkit, eivätkä junavuorot välttämättä pysähdy kaikilla asemilla. Reitit haarautuvat rautatieverkostossa täysin mielivaltaisesti. Esimerkiksi pysäkiltä B voi olla kiskot pysäkeille A, C, D ja E, eikä ainoastaan "edelliselle pysäkille A ja seuraavalle pysäkille C". Järjestelmän tulisi pystyä näyttämään käyttälle reittioppaan tavoin eri vaihtoehdot matkustaa paikasta x paikkaan y, huomioiden mahdolliset vaihdot, sekä optimoiden ajankäytön ja hinnan.
+Asiakkaat voivat hakea palvelun kautta juna-aikatauluja, ja varata lippuja (jotka ovat haettavissa asemalta lähdettäessä), mikäli niitä on jäljellä. Lippujen hinnat riippuvat pääteasemista, junavuorosta sekä ostajan statuksesta (opiskelija/aikuinen jne.). Eri junavuoroilla on omat lähtö -ja päätepysäkit, eivätkä junavuorot välttämättä pysähdy kaikilla asemilla. Reitit haarautuvat rautatieverkostossa täysin mielivaltaisesti. Esimerkiksi pysäkiltä B voi olla kiskot pysäkeille A, C, D ja E, eikä ainoastaan ``edelliselle pysäkille A ja seuraavalle pysäkille C''. Järjestelmän tulisi pystyä näyttämään käyttälle reittioppaan tavoin eri vaihtoehdot matkustaa paikasta x paikkaan y, huomioiden mahdolliset vaihdot, sekä optimoiden ajankäytön ja hinnan.
 
 Junavuoron voi olettaa kulkevan eri kausina (kesä/talvi) tietyn viikonpäivän tiettyyn kellonaikaan. Eri junavuorojen nopeuksista toisiinsa nähden ei voi tehdä mitään oletuksia.
 
@@ -140,11 +140,92 @@ Valitsimme tietokannaksi vapaan PostgreSQL\footnote{\url{http://www.postgresql.o
   \caption{ER-malli keskeisimmista relaatioista}
 \end{figure}
 
-\textbf{TODO:} Kaavion sanallinen selvennys. Selittäkää ER-kaaviossa tehdyt ratkaisut, kaavion täytyy olla ulkopuolisen ymmärrettävissä.
+Alla lyhyt selitys kunkin relaation merkityksestä.
+
+\subsubsection{CustomerType}
+
+Asiakastyyppi lipulle. Pääasiassa alennuslippujen määrittelyyn. Sisältää vain
+käyttäjäystävällisen nimen, jotta sitä ei tarvitse toistaa jokaisessa
+lipputyypissä.
+
+\begin{lstlisting}
+INSERT INTO minivr_customertype
+            (id, name)
+     VALUES (1, 'Aikuinen'),
+            (2, 'Lapsi')
+\end{lstlisting}
+
+\subsubsection{Ticket}
+
+Vuorolle varattu lippu. Sisältää \emph{Connection.cost}-kentästä riippuvan
+hinnan sekä viittaukset junavuoroon ja asiakastyyppiin.
+
+Erillistä \emph{id}-kenttää ei periaatteessa tarvita, mutta käyttämämme
+ohjelmisto ei tue monisarakkeisia pääavaimia: kenttä on vain myönnytys sille.
+
+\begin{lstlisting}
+INSERT INTO minivr_ticket
+            (id, service_id, customer_type_id, price_per_cost)
+     VALUES (0, 0, 0, 0.859600),
+            (1, 0, 1, 0.331600)
+            (2, 2, 1, 1.613300)
+\end{lstlisting}
+
+\subsubsection{Station}
+
+Juna-asema. Kuten \emph{CustomerType}, tämä relaatio sisältää vain nimen.
+
+\begin{lstlisting}
+INSERT INTO minivr_station
+            (id, name)
+     VALUES (0, 'Helsinki'),
+            (1, 'Pasila'),
+            (2, 'Tikkurila')
+\end{lstlisting}
+
+\subsubsection{Train}
+
+Juna, jolla vuoro ajetaan. Nimen ohella relaatiossa on tieto siitä, miten monta
+asiakaspaikkaa junassa on.
+
+\begin{lstlisting}
+INSERT INTO minivr_train
+            (id, name, seats)
+     VALUES (0, 'IC2 109', 120)
+            (1, 'IC 11', 120)
+            (2, 'IC 113', 84)
+\end{lstlisting}
+
+\subsubsection{Service}
+
+Junavuoro, esimerkiksi \emph{IC2 109 klo 12:15}, ja kuinka monta tyhjää paikkaa
+siinä on jäljellä. Oletusarvoisesti kukin juna kulkee joka päivä.
+
+Sovellus tukee varauksia vain yhteen vuoroon kerrallaan eli esim. päivittäin
+kulkevaan junaan ei voi varata paikkaa ylihuomiselle. Tämä rajoitus tajuttiin
+liian myöhään, joten se päätettiin jättää sikseen. (Eräs mahdollinen ratkaisu
+esitelty \emph{Stop}-relaation yhteydessä jäljempänä.)
+
+\begin{lstlisting}
+INSERT INTO minivr_service
+            (id, train_id, departure_time, free_seats)
+     VALUES (0, 60, '12:15', 26),
+            (1, 90, '13:50', 97)
+\end{lstlisting}
 
 \subsubsection{Connection}
 
-Kuvaa raideyhteyttä kahden aseman välillä.
+Kuvaa raideyhteyttä kahden aseman välillä. Relaatio on vain maantieteellinen
+eikä ota kantaa esimerkiksi siihen, miten kauan kestää kulkea kyseinen väli
+tietyllä junavuorolla.
+
+Yhteydessä on kaksi eri mittaa: \emph{distance} on etäisyys, \emph{cost} taas
+abstraktisti ``kulkuhintaa'' merkitsevä. Se voi esimerkiksi olla etäisyyttä
+korkeampi, jos rata on tavallista kalliimpi ylläpitää.
+\emph{Ticket}-relaatiossa mainittu hinta on yhtä \emph{cost}-yksikköä kohden.
+
+Kuten \emph{Ticket}:n tapauksessa, \emph{id}-kenttä on myönnytys ohjelmistolle.
+
 \begin{lstlisting}
 INSERT INTO minivr_customertype
             (id, out_of_id, to_id, distance, cost)
@@ -154,40 +235,25 @@ INSERT INTO minivr_customertype
             (4, 2, 1, 44, 39)
 \end{lstlisting}
 
-\subsubsection{CustomerType}
-
-Asiakastyyppi lipulle. Pääasiassa alennuslippujen määrittelyyn.
-\begin{lstlisting}
-INSERT INTO minivr_customertype
-            (id, name)
-     VALUES (1, 'Aikuinen'),
-            (2, 'Lapsi')
-\end{lstlisting}
-
-\subsubsection{Service}
-
-Junavuoro, esimerkiksi \emph{IC2 109 1.12.2010 klo 12:15}. Sovellus tukee varauksia vain yhteen vuoroon kerrallaan eli päivittäin kulkevaan junaan ei voi varata paikkaa ylihuomiselle.
-\begin{lstlisting}
-INSERT INTO minivr_service
-            (id, train_id, departure_time, free_seats)
-     VALUES (0, 60, '12:15', 26),
-            (1, 90, '13:50', 97)
-\end{lstlisting}
-
-\subsubsection{Station}
-
-Asema, joilta junat voivat lähteä ja pysähtyä.
-\begin{lstlisting}
-INSERT INTO minivr_station
-            (id, name)
-     VALUES (0, 'Helsinki'),
-            (1, 'Pasila'),
-            (2, 'Tikkurila')
-\end{lstlisting}
-
 \subsubsection{Stop}
 
-Yksittäinen pysähdys asemalla junavuorolle.
+Yksittäinen pysähdys asemalla junavuorolle. Sisältää tiedon siitä, milloin
+vuoro saapuu kyseiselle asemalle ja milloin se lähtee sieltä.
+
+\emph{arrival\_time}- ja \emph{departure\_time}-kentät ovat minuuteissa alkaen
+vuoron lähtöajasta---tämä esitystapa valittiin, koska se on kätevä reitinhaun
+toteutuksen kannalta. Vuoron alkuasemalla \emph{arrival\_time} ja vastaavasti
+pääteasemalla \emph{departure\_time} on tyhjä kenttä (NULL).
+
+Rivissä on myös tieto siitä, milloin kyseinen pysähdyspaikka on voimassa.
+Allaolevassa esimerkissä vuoro pysähtyy asemilla vuosien 2010--2011 jokaisen
+kuukauden jokaisena viikonpäivänä. Kuuden päivämääräkentän avulla voidaan
+esittää kausittaisia pysähdyspaikkoja tyyliin ``tämä vuoro pysähtyy täällä vain
+kesämaanantaisin''. Vuodet voivat olla NULL-arvoja, jolloin niitä ei oteta
+huomioon.
+
+Kuten \emph{Ticket}:n tapauksessa, \emph{id}-kenttä on myönnytys ohjelmistolle.
+
 \begin{lstlisting}
 INSERT INTO minivr_stop
             (id, service_id, station_id,
@@ -197,29 +263,6 @@ INSERT INTO minivr_stop
      VALUES (0, 0,  25,NULL, 0,2010,2011,1,12,1,7),
             (1, 0,  28,  14,15,2010,2011,1,12,1,7)
 \end{lstlisting}
-
-\subsubsection{Ticket}
-
-Vuorolle varattu lippu.
-\begin{lstlisting}
-INSERT INTO minivr_ticket
-            (id, service_id, customer_type_id, price_per_cost)
-     VALUES (0, 0, 0, 0.859600),
-            (1, 0, 1, 0.331600)
-            (2, 2, 1, 1.613300)
-\end{lstlisting}
-
-\subsubsection{Train}
-
-Juna, jolla vuoro ajetaan.
-\begin{lstlisting}
-INSERT INTO minivr_train
-            (id, name, seats)
-     VALUES (0, 'IC2 109', 120)
-            (1, 'IC 11', 120)
-            (2, 'IC 113', 84)
-\end{lstlisting}
-
 
 \subsection{Tietokantatoteutus}
 
