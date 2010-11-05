@@ -51,6 +51,12 @@ def service_reserve_simple(request, service_id):
     return render_to_response('reserve_simple.html',
                               {'service':service})
 
+def list_stations(request):
+    stations = Station.objects.order_by('name')
+    return render_to_response(
+            'list_stations.html',
+            {'stations':stations})
+
 def get_route(request):
     # Passed to the template even in the case of errors, so that it can fill in
     # the form with what the user previously input.

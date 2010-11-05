@@ -6,6 +6,7 @@ urlpatterns = patterns('minivr.views',
     (r'^$',                                            'get_route'),
     (r'^minivr/$',                                     'index'),
     (r'^minivr/route/$',                               'get_route'),
+    (r'^minivr/stations$',                             'list_stations'),
     (r'^minivr/service/(?P<service_id>\d+)/$',         'service_detail'),
     (r'^minivr/service/(?P<service_id>\d+)/reserve/$', 'service_reserve'),
     (r'^minivr/service/(?P<service_id>\d+)/reserve-simple/$', 'service_reserve_simple'))
