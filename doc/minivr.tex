@@ -125,9 +125,9 @@ Aiheeseen voi ottaa ideoita esim. VR:n sivuita.
 
 Käyttäjät etsivät järjestelmää käyttäen itselleen sopivia junavuoroja.
 Järjestelmän pitää pystyä hakemaan käyttäjälle reitti annettujen asemien
-välille, siten että jos suoraa yhteyttä ei löydy, järjestelmä yrittää
-löytää käyttäjälle mahdollisimman hyvän reitin.  Käyttäjän pitää pystyä
-varaamaan lippuja valitsemalleen reitille.
+välille. Jos suoraa yhteyttä ei löydy, järjestelmä yrittää löytää käyttäjälle
+mahdollisimman hyvän vaihtoyhteyden. Käyttäjän pitää pystyä varaamaan lippuja
+valitsemalleen reitille.
 
 \section{Tietokanta}
 
@@ -170,14 +170,33 @@ Vuorolle varattu lippu.
 
 Juna, jolla vuoro ajetaan.
 
-\subsection{Tietokantataulut}
+\subsection{Tietokantatoteutus}
 
 Taulujen luontikomennot ovat listauksessa~\ref{lst:sqlcreatetables} sivulla~\pageref{lst:sqlcreatetables}. Tietokantataulut luotiin Djangon objekti-relaatiokuvausmoduulia käyttäen, joka loi SQL-taulut ja päivitti tietokantarakenteet kehityksen aikana.
 
+Suoraviivaisesta ER-mallin muunnoksesta relaatiomalliksi täytyi poiketa monissa kohdissa johtuen käytetyn objekti-relaatiokuvaustekniikan rajoituksista. Tekniikka ei sallinut muunmuassa useamman attribuutin avaimia. Tietokantaan ei voinut myöskään laittaa kuin yksinkertaisia tarkistuksia tiedon oikeellisuudesta.
+
+
+Käytetyn tekniikan rajoituksia olisi voinut osin kiertää käyttämällä tietokantapalvelimeen tallennettuja proseduureja. Projektin yhteydessä haluttiin kuitenkin opetella objekti-relaatiokuvauksen käyttöä sen ketteryyden ja käytännöllisyyden vuoksi.
+
+\subsubsection{Testidata}
+
+Pohjana testidatalle on ote VR:n junavuorojen aikatauluista CSV\footnote{Comma Separated Values}-muodossa. Lähdekoodin tiedostossa \texttt{schedules.csv} on riveittäin lueteltu junavuoron tunnus, pysäkki, saapumisaika asemalle ja lähtöaika asemalta.
+
+\begin{figure}[h]
 \begin{lstlisting}
-CREATE TABLE minivr_junavuorot (ID TEXT PRIMARY KEY NOT NULL);
-INSERT INTO minivr_junavuorot ('7652');
+IC2 109,Helsinki,,14:12
+IC2 109,Pasila,14:17,14:18
+IC2 109,Tikkurila,14:27,14:28
+IC2 109,Lahti,15:06,15:08
+IC2 109,Kouvola,15:40,
+IC 11,Helsinki,,18:12
 \end{lstlisting}
+[\ldots]
+  \caption{Ote junavuorojen testidatasta}
+\end{figure}
+
+Projektissa testidata generoidaan tietokantaan Python-skriptillä, joka luo tarvittavat tietorakenteet, sekä täydentää syöttötietoja satunnaisdatalla.
 
 \subsubsection{Normalisointi}
 \textbf{TODO:} Esitys funktionaalisista riippuvuuksista taulujen attribuuttien välillä. Ovatko taulut BCNF-normaalimuodossa? BCNF-normaalimuodon rikkominen edellyttää perustelut. 
@@ -185,9 +204,52 @@ INSERT INTO minivr_junavuorot ('7652');
 \subsubsection{Indeksointi}
 \textbf{TODO:} Käytetyn indeksoinnin perustelut.
 
+\subsection{Tärkeimmät tietokantakyselyt}
+\textbf{TODO:} Tärkeimmät tietokantakyselyt
+
+\subsubsection{Junayhteyksien haku Dĳkstran algoritmilla}
+Toteutetun työn tärkein osuus on tarjota mahdollisia junayhteyksiä asiakkaalle. Tietokantaan on tallennettu saapumis- ja lähtöaikoja junavuoroittain. Ohjelman tehtävänä on päätellä kelvolliset suorat ja vaihdolliset junayhteydet ja esittää ne yksinkertaisessa muodossa.
+
+Yksi mahdollinen tapa ratkaista ongelma on ajatella toteutuvia junavuoroja suunnattuna verkkona (jossa voi olla silmukoita). Ratkaisun voi löytää soveltamalla jotain tunnettua algoritmia polkujen löytämiseksi.
+
+Toteutimme reittihakuihin muunnelman Dĳkstran algoritmista\footnote{Katso algoritmin kuvaus esimerkiksi \href{http://fi.wikipedia/Dijkstran\_algoritmi}{Wikipediasta}} joka löytää vaihtoehtoiset reitit. \textbf{TODO: pitääkö tämä paikkansa? --mtorni} 
+
+\lstset{float,language=SQL,caption=\textbf{TODO:} Esimerkki kyselylauseesta}
+\begin{lstlisting}
+SELECT * FROM
+  (SELECT
+     (60 * extract(hour   from minivr_service.departure_time)
+       +   extract(minute from minivr_service.departure_time)
+       + minivr_stop.departure_time
+       - ?)
+     AS t,
+     minivr_stop.*
+     FROM minivr_stop
+         INNER JOIN minivr_service
+                 ON (minivr_stop.service_id = minivr_service.id)
+         INNER JOIN minivr_station
+                 ON (minivr_stop.station_id = minivr_station.id)
+     WHERE UPPER(minivr_station.name::text) = UPPER(?)
+       AND minivr_service.free_seats > 0
+
+--       FIXME: this doesnt take into account the fact that the
+--       time may wrap into another date. That's not as trivial to
+--       handle as it may seem.
+       AND (minivr_stop.year_min IS NULL
+            OR (    minivr_stop.year_min <= wanted_year
+                AND minivr_stop.year_max >= wanted_year
+                AND minivr_stop.month_min <= wanted_month
+                AND minivr_stop.month_max >= wanted_month
+                AND minivr_stop.weekday_min <= wanted_weekday
+                AND minivr_stop.weekday_max >= wanted_weekday))
+       AND minivr_stop.departure_time IS NOT NULL)
+  AS ts
+  ORDER BY ts.t - (24*60) * floor(ts.t / (24*60)) DESC)
+\end{lstlisting}
+
 \section{Käyttöliittymä}
 
-Ryhmän jäsenten kiinnostuksen perusteella valitsimme käyttöliittymän toteutukseen \href{http://www.python.org/}{Pythonin}-ohjelmointikielen\footnote{\url{http://www.python.org/}} ja Python-pohjaisen \href{http://www.djangoproject.com/}{Django-kehitysrungon}\footnote{\url{http://www.djangoproject.com/}}.
+Ryhmän jäsenten kiinnostuksen perusteella valitsimme käyttöliittymän toteutukseen \href{http://www.python.org/}{Python}-ohjelmointikielen\footnote{\url{http://www.python.org/}} ja Python-pohjaisen \href{http://www.djangoproject.com/}{Django-kehitysrungon}\footnote{\url{http://www.djangoproject.com/}}.
 
 Django on korkean tason Web-kehitysympäristö joka kannustaa nopeaan kehitykseen ja puhtaaseen, pragmaattiseen suunnitteluun. Djangon ominaisuuksista käytimme objekti-relaatiokuvausta, jonka avulla ohjelmoidessa ei tarvitse erikseen työstää SQL-rajapinnan tietotyyppimuunnoksia.
 
@@ -235,7 +297,7 @@ paikkaan, toinen siis epäonnistuu).
 \subsection{Työmäärä}
 \textbf{TODO:} Lisäksi toivomme myös rehellistä selvitystä töiden jakautumisesta ryhmän jäsenten kesken, sekä arvioita tehdyistä tunneista kunkin aktiviteetin osalta. Mikäli ette ole pitäneet tunneista kirjaa, summittaisetkin arviot kelpaavat. Tämän kappaleen tiedot eivät vaikuta työn arvosteluun.
 
-Mikko Markus Torni käytti harjoitustyöhön aikaa yhden tunnin ideoiden ylös kirjaamiseen, 12 tuntia dokumentoinnissa, kaksi tuntia koodiin tutustumiseen.
+Mikko Markus Torni käytti harjoitustyöhön aikaa yhden tunnin ideoiden ylös kirjaamiseen, 12 tuntia dokumentoinnissa ja kaksi tuntia koodiin tutustumiseen.
 
 Sami J. Lehtinen käytti 4 tuntia ylläpitotoimiin, 20 tuntia koodaamiseen
 ja Djangoon tutustumiseen sekä 4 tuntia dokumentointiin.
