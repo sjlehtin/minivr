@@ -12,8 +12,8 @@ from django.shortcuts         import render_to_response, get_object_or_404
 from django.template          import RequestContext
 
 from minivr                          import findroute
-from minivr.models                   import Ticket, Service, Stop, Station,\
-                                            Connection
+from minivr.models                   import Ticket, CustomerType, \
+                                            Service, Stop, Station, Connection
 from minivr.templatetags.minivr_time import addminutes
 
 WANTED_ROUTE_COUNT = 3
@@ -54,7 +54,12 @@ def service_reserve_simple(request, service_id):
 def get_route(request):
     # Passed to the template even in the case of errors, so that it can fill in
     # the form with what the user previously input.
-    vals = dict((k, unicode(v)) for (k,v) in request.GET.iteritems())
+    vals = dict(request.GET.iteritems())
+
+    vals['customer_types'] = CustomerType.objects.all()
+
+    if not request.GET:
+        return render_to_response('get_route.html', vals)
 
     (_, _, _, hours_now, minutes_now, _, _, _, _) = time.localtime()
     if not vals.get('h'):
@@ -93,6 +98,9 @@ def get_route(request):
 
         wanted_weekday = \
             date(wanted_year, wanted_month, wanted_day).isoweekday()
+
+        customer_type_id = request.GET['customer']
+        vals['customer'] = int(customer_type_id)
 
         # Minutes from midnight. This ensures that in the queries below, e.g.
         # 23:00 + 120 exceeds 21:00.
@@ -390,8 +398,10 @@ def get_route(request):
                 else:
                     assert start.service_id == end.service_id
                     price_per_cost =\
-                        Ticket.objects.get(service = start.service_id,
-                                           customer_type = 1).price_per_cost
+                        Ticket.objects.get(
+                            service = start.service_id,
+                            customer_type = customer_type_id).price_per_cost
+
                     price = (cost * price_per_cost).quantize(Decimal('1.00'))
 
                 # For last nodes of a service, use arrival_time. If we have

@@ -14,6 +14,7 @@
     <p>Päivämäärä: <input type="text" name="y"  size="4" maxlength="4" value="{{ y }}">
                    <input type="text" name="mo" size="2" maxlength="2" value="{{ mo }}">
                    <input type="text" name="d"  size="2" maxlength="2" value="{{ d }}"></p>
+    <p>
     {% if type == 'arrival' %}
         <input type="radio" name="type" value="departure" id="departure"><label for="departure">Lähtöaika</label>
         <input type="radio" name="type" value="arrival" checked="yes" id="arrival"><label for="arrival">Saapumisaika</label>
@@ -21,6 +22,14 @@
         <input type="radio" name="type" value="departure" checked="yes" id="departure"><label for="departure">Lähtöaika</label>
         <input type="radio" name="type" value="arrival" id="arrival"><label for="arrival">Saapumisaika</label>
     {% endif %}
+    </p>
+    <p>
+    {% for ctype in customer_types %}
+        <input type="radio" name="customer" value={{ ctype.id }} id=c{{ ctype.id }}
+               {% if ctype.id == customer|default_if_none:1 %}checked=checked{% endif %}>
+        <label for=c{{ ctype.id }}>{{ ctype.name }}</label>
+    {% endfor %}
+    </p>
     <input type="submit" value="Hae reitti">
 </form>
 
@@ -28,9 +37,9 @@
 <small>
 Esimerkkejä:
 <br />
-<a href="/?from=Helsinki&to=kouvola&h=12&m=00&type=departure">Helsingistä Kouvolaan klo 12:00</a>
+<a href="/?from=Helsinki&to=kouvola&h=12&m=00&type=departure&customer=1">Helsingistä Kouvolaan klo 12:00</a>
 <br />
-<a href="/?from=Turku&to=Joensuu&h=23&m=58&type=departure">Turusta Joensuuhun klo 23:58</a>
+<a href="/?from=Turku&to=Joensuu&h=23&m=58&type=departure&customer=1">Turusta Joensuuhun klo 23:58</a>
 </small>
 </p>
 
