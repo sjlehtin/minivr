@@ -37,7 +37,7 @@ Projektissa mukana tulevat asetukset:
 Alusta Djangon vaatimat setit tietokantaan:
 
     $ cd devsite
-    $ cat schedules.csv | python cvstofix.py > minivr/fixtures/initial_data.json
+    $ python csvtofix.py < schedules.csv > minivr/fixtures/initial_data.json
     $ python manage.py syncdb
 
 Testaa että kaikki toimii:
