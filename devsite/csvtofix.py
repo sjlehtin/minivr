@@ -1,3 +1,4 @@
+from decimal import Decimal
 from datetime import datetime
 import json
 import random
@@ -40,6 +41,7 @@ for line in stdin:
     prev_station = station
 
 fixtures.append({'model': 'minivr.customertype', 'pk': 1, 'fields': {'name': 'aikuinen'}})
+fixtures.append({'model': 'minivr.customertype', 'pk': 2, 'fields': {'name': 'lapsi'}})
 
 for name,id in stations.items():
     fixtures.append({'model': 'minivr.station', 'pk': id, 'fields': {'name': name}})
@@ -65,6 +67,7 @@ for v in connections:
 
 s = 0
 st = 0
+t = 0
 for train, service in services.items():
     dt = service[0][2]
 
@@ -92,10 +95,18 @@ for train, service in services.items():
                           'weekday_max': 7}})
         st += 1
 
-    fixtures.append({'model': 'minivr.ticket', 'pk': s, 'fields':
+    price = Decimal('%d.%d' % (round(random.randint(0,1)), random.randint(20,9999)))
+
+    fixtures.append({'model': 'minivr.ticket', 'pk': t, 'fields':
                      {'service': s,
                       'customer_type': 1,
-                      'price_per_cost': '%d.%d' % (round(random.randint(0,1)), random.randint(20,9999))}})
+                      'price_per_cost': str(price) }})
+    t += 1
+    fixtures.append({'model': 'minivr.ticket', 'pk': t, 'fields':
+                     {'service': s,
+                      'customer_type': 2,
+                      'price_per_cost': str((price / 2).quantize(Decimal('1.0000')))}})
+    t += 1
     s += 1
 
 json.dump(fixtures, stdout, ensure_ascii = False, indent = 2)
