@@ -165,9 +165,10 @@ ohjelmisto ei tue monisarakkeisia pääavaimia: kenttä on vain myönnytys sille
 
 \begin{lstlisting}
 INSERT INTO minivr_ticket
-            (id, service_id, customer_type_id, price_per_cost)
+            (id, service_id, customer_type_id,
+             price_per_cost)
      VALUES (0, 0, 0, 0.859600),
-            (1, 0, 1, 0.331600)
+            (1, 0, 1, 0.331600),
             (2, 2, 1, 1.613300)
 \end{lstlisting}
 
@@ -191,8 +192,8 @@ asiakaspaikkaa junassa on.
 \begin{lstlisting}
 INSERT INTO minivr_train
             (id, name, seats)
-     VALUES (0, 'IC2 109', 120)
-            (1, 'IC 11', 120)
+     VALUES (0, 'IC2 109', 120),
+            (1, 'IC 11', 120),
             (2, 'IC 113', 84)
 \end{lstlisting}
 
