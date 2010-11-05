@@ -190,7 +190,10 @@ INSERT INTO minivr_station
 Yksittäinen pysähdys asemalla junavuorolle.
 \begin{lstlisting}
 INSERT INTO minivr_stop
-            (id, service_id, station_id, arrival_time, departure_time, year_min, year_max, month_min, month_max, weekday_min, weekday_max)
+            (id, service_id, station_id,
+             arrival_time, departure_time,
+             year_min, year_max, month_min, month_max,
+             weekday_min, weekday_max)
      VALUES (0, 0,  25,NULL, 0,2010,2011,1,12,1,7),
             (1, 0,  28,  14,15,2010,2011,1,12,1,7)
 \end{lstlisting}
