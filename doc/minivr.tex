@@ -141,7 +141,28 @@ Valitsimme tietokannaksi vapaan PostgreSQL\footnote{\url{http://www.postgresql.o
   \caption{ER-malli keskeisimmista relaatioista}
 \end{figure}
 
+Sovelluksessa on painotettu ajallisesti lyhyiden reittien löytämistä käyttäjän antamilla aikavaatimuksilla.
+
+Säännöllisiä junavuoroja kuvataan \emph{Service}-relaatiolla. \emph{Service} määrittää junan myyntitunnuksen ja lähtöajan ensimmäiseltä asemalta sekä pitää kirjaa varaamattomista paikkojen lukumäärästä. 
+
+\emph{CustomerType}, \emph{Ticket} ja \emph{Train} sisältävät harvemmin muuttuvaa tietoa joita tarvitaan vain käyttöliittymässä ja hinnoittelussa.
+
+Reitityksen kannalta oleellisin on \emph{Stop}. \emph{Station} tarjoaa käsitteen asemalle, mikä on reitityksen kannalta tarpeeton. \emph{Connection} määrää matkalle lopuksi hinnan.
+
+
 Alla lyhyt selitys kunkin relaation merkityksestä.
+
+\subsubsection{Connection}
+
+Kuvaa raideyhteyttä kahden aseman välillä.
+\begin{lstlisting}
+INSERT INTO minivr_customertype
+            (id, out_of_id, to_id, distance, cost)
+     VALUES (0, 0, 1, 32, 26),
+            (1, 1, 0, 32, 26),
+            (2, 1, 2, 44, 39),
+            (4, 2, 1, 44, 39)
+\end{lstlisting}
 
 \subsubsection{CustomerType}
 
