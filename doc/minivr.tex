@@ -13,6 +13,7 @@
 \renewcommand{\lstlistingname}{Listaus}
 \renewcommand{\lstlistlistingname}{Listaukset}
 
+\usepackage{amsmath}
 \usepackage{tikz}
 \usepackage{graphicx}
 
@@ -293,7 +294,62 @@ IC 11,Helsinki,,18:12
 Projektissa testidata generoidaan tietokantaan Python-skriptillä, joka luo tarvittavat tietorakenteet ja täydentää syöttötietoja satunnaisdatalla muunmuassa etäisyydet ja hinnat.
 
 \subsubsection{Normalisointi}
-\textbf{TODO:} Esitys funktionaalisista riippuvuuksista taulujen attribuuttien välillä. Ovatko taulut BCNF-normaalimuodossa? BCNF-normaalimuodon rikkominen edellyttää perustelut.
+
+Kukin relaatio on BCNF-normaalimuodossa. Alla taulukohtaiset riippuvuudet,
+skipaten käyttämättömät \emph{id}-kentät:
+
+\paragraph{CustomerType}
+
+\begin{align*}
+id &\Rightarrow name\\
+name &\Rightarrow id
+\end{align*}
+
+Sekä $id$ ja $name$ ovat kandidaattiavaimia, joten taulu on BCNF-muodossa.
+
+\paragraph{Ticket}
+
+\begin{align*}
+service\_id, customer\_type\_id &\Rightarrow price\_per\_cost
+\end{align*}
+
+$service\_id$ ja $customer\_type\_id$ ovat yhdessä kandidaattiavain, joten
+taulu on BCNF-muodossa.
+
+\paragraph{Station}
+
+Kuten \emph{CustomerType}.
+
+\paragraph{Train}
+
+Kuten \emph{CustomerType}, paitsi että sekä $id$- että $name$-kentästä seuraa
+myös $seats$.
+
+\paragraph{Service}
+
+\begin{align*}
+id &\Rightarrow train\_id, departure\_time, free\_seats
+\end{align*}
+
+$id$ on kandidaattiavain, joten taulu on BCNF-muodossa.
+
+\paragraph{Connection}
+
+\begin{align*}
+out\_of\_id, to\_id &\Rightarrow distance, cost
+\end{align*}
+
+$id$-pari muodostaa kandidaattiavaimen, joten taulu on BCNF-muodossa.
+
+\paragraph{Stop}
+
+\begin{align*}
+service\_id, station\_id \Rightarrow &arrival\_time, departure\_time,\\
+&year\_min, year\_max, month\_min, month\_max,\\
+&weekday\_min, weekday\_max
+\end{align*}
+
+$id$-pari muodostaa kandidaattiavaimen, joten taulu on BCNF-muodossa.
 
 \subsubsection{Indeksointi}
 Junayhteyksien haku on toteutettu Dijkstran algoritmilla sovelluksessa siten että tietokannalle tehdään tiheästi yksinkertaisia kyselyitä ja datamäärä on pieni. Indekseistä on rajoitetusti apua vain suuremmissa tauluissa joissa on yli tuhat riviä testidataa (\emph{Connection}, \emph{Stop}).
