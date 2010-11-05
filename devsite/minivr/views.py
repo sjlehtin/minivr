@@ -163,6 +163,9 @@ def get_route(request):
                   wanted_month, wanted_month,
                   wanted_weekday, wanted_weekday]
 
+        # Just to get a better error message...
+        Station.objects.get(name__iexact = from_station_name)
+
         cursor = connection.cursor()
         cursor.execute(query % "DESC", params)
 
