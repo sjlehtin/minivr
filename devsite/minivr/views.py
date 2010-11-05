@@ -140,13 +140,14 @@ def get_route(request):
             #       FIXME: this doesn't take into account the fact that the
             #       time may wrap into another date. That's not as trivial to
             #       handle as it may seem.
-            '       AND (minivr_stop.year_min IS NULL'
-            '            OR (    minivr_stop.year_min <= %%s'
-            '                AND minivr_stop.year_max >= %%s'
-            '                AND minivr_stop.month_min <= %%s'
-            '                AND minivr_stop.month_max >= %%s'
-            '                AND minivr_stop.weekday_min <= %%s'
-            '                AND minivr_stop.weekday_max >= %%s))'
+            '       AND (minivr_stop.year_min IS NULL '
+            '            OR minivr_stop.year_min <= %%s)'
+            '       AND (minivr_stop.year_max IS NULL '
+            '            OR minivr_stop.year_max >= %%s)'
+            '       AND minivr_stop.month_min <= %%s'
+            '       AND minivr_stop.month_max >= %%s'
+            '       AND minivr_stop.weekday_min <= %%s'
+            '       AND minivr_stop.weekday_max >= %%s'
             '       AND minivr_stop.departure_time IS NOT NULL)'
             '  AS ts'
             #           Positive remainder of ts.t / (24*60)

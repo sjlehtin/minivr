@@ -198,9 +198,9 @@ CREATE OR REPLACE VIEW minivr_available_service_by_date
            d.d::timestamptz + stop.departure_time * '1 minute'::interval
       FROM all_dates d,
            minivr_stop stop
-     WHERE stop.year_min IS NULL
-            OR (d.year BETWEEN stop.year_min AND stop.year_max
-                AND d.month BETWEEN stop.month_min AND stop.month_max
-                AND d.dow BETWEEN stop.weekday_min AND stop.weekday_max);
+     WHERE      (stop.year_min IS NULL OR stop.year_min <= d.year)
+            AND (stop.year_max IS NULL OR stop.year_max >= d.year)
+            AND d.month BETWEEN stop.month_min AND stop.month_max
+            AND d.dow BETWEEN stop.weekday_min AND stop.weekday_max);
 
 SELECT service.departure_time 

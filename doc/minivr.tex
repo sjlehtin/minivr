@@ -334,12 +334,13 @@ SELECT * FROM
      WHERE UPPER(minivr_station.name::text) = UPPER(?)
        AND minivr_service.free_seats > 0
        AND (minivr_stop.year_min IS NULL
-            OR (    minivr_stop.year_min <= wanted_year
-                AND minivr_stop.year_max >= wanted_year
-                AND minivr_stop.month_min <= wanted_month
-                AND minivr_stop.month_max >= wanted_month
-                AND minivr_stop.weekday_min <= wanted_weekday
-                AND minivr_stop.weekday_max >= wanted_weekday))
+            OR minivr_stop.year_min <= wanted_year)
+       AND (minivr_stop.year_max IS NULL
+            OR minivr_stop.year_max >= wanted_year)
+       AND minivr_stop.month_min <= wanted_month
+       AND minivr_stop.month_max >= wanted_month
+       AND minivr_stop.weekday_min <= wanted_weekday
+       AND minivr_stop.weekday_max >= wanted_weekday
        AND minivr_stop.departure_time IS NOT NULL)
   AS ts
   ORDER BY ts.t - (24*60) * floor(ts.t / (24*60)) DESC)
