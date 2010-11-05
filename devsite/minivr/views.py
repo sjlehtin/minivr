@@ -1,8 +1,7 @@
 # coding=utf-8
 
-from datetime import date
+from datetime import date, datetime
 from decimal  import Decimal
-import time
 
 from django.core.urlresolvers import reverse
 from django.db                import connection
@@ -65,18 +64,16 @@ def list_stations(request):
 def get_route(request):
     # Passed to the template even in the case of errors, so that it can fill in
     # the form with what the user previously input.
-    vals = dict(request.GET.iteritems())
+    vals = dict(filter(lambda (k,v): v != '', request.GET.iteritems()))
 
     vals['customer_types'] = CustomerType.objects.all()
 
-    if not request.GET:
-        return render_to_response('get_route.html', vals)
-
-    (_, _, _, hours_now, minutes_now, _, _, _, _) = time.localtime()
-    if not vals.get('h'):
-        vals['h'] = hours_now
-    if not vals.get('m'):
-        vals['m'] = minutes_now
+    now = datetime.now()
+    vals.setdefault('h',  now.hour)
+    vals.setdefault('m',  now.minute)
+    vals.setdefault('y',  now.year)
+    vals.setdefault('mo', now.month)
+    vals.setdefault('d',  now.day)
 
     if not request.GET:
         return render_to_response('get_route.html', vals)
@@ -84,12 +81,12 @@ def get_route(request):
     error = False
     try:
         # Do this first because it needs to be an int for the template to work.
-        customer_type_id = request.GET['customer']
+        customer_type_id = vals['customer']
         vals['customer'] = int(customer_type_id)
 
-        from_station_name = request.GET['from']
-        to_station_name   = request.GET['to']
-        time_type         = request.GET['type']
+        from_station_name = vals['from']
+        to_station_name   = vals['to']
+        time_type         = vals['type']
 
         if time_type == 'departure':
             search_forwards = True
@@ -98,18 +95,17 @@ def get_route(request):
         else:
             raise ValueError
 
-        wanted_hour = int(request.GET['h'])
+        wanted_hour = int(vals['h'])
         if not 0 <= wanted_hour < 24:
             raise ValueError
 
-        wanted_minute = int(request.GET['m'])
+        wanted_minute = int(vals['m'])
         if not 0 <= wanted_minute < 60:
             raise ValueError
 
-        today = date.today()
-        wanted_year  = int(request.GET.get('y')  or today.year)
-        wanted_month = int(request.GET.get('mo') or today.month)
-        wanted_day   = int(request.GET.get('d')  or today.day)
+        wanted_year  = int(vals['y'])
+        wanted_month = int(vals['mo'])
+        wanted_day   = int(vals['d'])
 
         wanted_weekday = \
             date(wanted_year, wanted_month, wanted_day).isoweekday()
