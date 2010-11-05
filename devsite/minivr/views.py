@@ -83,6 +83,10 @@ def get_route(request):
 
     error = False
     try:
+        # Do this first because it needs to be an int for the template to work.
+        customer_type_id = request.GET['customer']
+        vals['customer'] = int(customer_type_id)
+
         from_station_name = request.GET['from']
         to_station_name   = request.GET['to']
         time_type         = request.GET['type']
@@ -109,9 +113,6 @@ def get_route(request):
 
         wanted_weekday = \
             date(wanted_year, wanted_month, wanted_day).isoweekday()
-
-        customer_type_id = request.GET['customer']
-        vals['customer'] = int(customer_type_id)
 
         # Minutes from midnight. This ensures that in the queries below, e.g.
         # 23:00 + 120 exceeds 21:00.
