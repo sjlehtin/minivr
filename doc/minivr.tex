@@ -121,17 +121,17 @@ Aiheeseen voi ottaa ideoita esim. VR:n sivuita.
 \end{quotation}
 
 \subsection{Järjestelmän vaatimukset}
-\textbf{TODO:} Selvitys järjestelmän käyttötarkoituksesta ja sitä käyttävien käyttäjäryhmien tarpeista.
-
 Käyttäjät etsivät järjestelmää käyttäen itselleen sopivia junavuoroja.
 Järjestelmän pitää pystyä hakemaan käyttäjälle reitti annettujen asemien
 välille. Jos suoraa yhteyttä ei löydy, järjestelmä yrittää löytää käyttäjälle
 mahdollisimman hyvän vaihtoyhteyden. Käyttäjän pitää pystyä varaamaan lippuja
 valitsemalleen reitille.
 
+\lstset{language=SQL}
+
 \section{Tietokanta}
 
-Valitsimme toteutukseen vapaan PostgreSQL\footnote{\url{http://www.postgresql.org/}}-tietokannan. PostgreSQL on ohjelmistosuunnittelijaystävällinen sekä tarjoaa suorituskykyä ja joustavan indeksoinnin.
+Valitsimme tietokannaksi vapaan PostgreSQL\footnote{\url{http://www.postgresql.org/}}-tietokannan. PostgreSQL on ohjelmistosuunnittelijaystävällinen sekä tarjoaa suorituskykyä ja joustavan indeksoinnin.
 
 \subsection{ER-malli}
 
@@ -143,32 +143,80 @@ Valitsimme toteutukseen vapaan PostgreSQL\footnote{\url{http://www.postgresql.or
 \textbf{TODO:} Kaavion sanallinen selvennys. Selittäkää ER-kaaviossa tehdyt ratkaisut, kaavion täytyy olla ulkopuolisen ymmärrettävissä. 
 
 \subsubsection{Connection}
-Kuvaa yhteyttä kahden aseman välillä.
+
+Kuvaa raideyhteyttä kahden aseman välillä.
+\begin{lstlisting}
+INSERT INTO minivr_customertype
+            (id, out_of_id, to_id, distance, cost)
+     VALUES (0, 0, 1, 32, 26),
+            (1, 1, 0, 32, 26),
+            (2, 1, 2, 44, 39),
+            (4, 2, 1, 44, 39)
+\end{lstlisting}
 
 \subsubsection{CustomerType}
 
-Asiakastyyppi lipulle.  Pääasiassa alennuslippujen
-määrittelyyn.
+Asiakastyyppi lipulle. Pääasiassa alennuslippujen määrittelyyn.
+\begin{lstlisting}
+INSERT INTO minivr_customertype
+            (id, name)
+     VALUES (1, 'Aikuinen'),
+            (2, 'Opiskelija')
+\end{lstlisting}
 
 \subsubsection{Service}
 
-Junavuoro.
+Junavuoro, esimerkiksi \emph{IC2 109 1.12.2010 klo 12:15}. Sovellus tukee varauksia vain yhteen vuoroon kerrallaan eli päivittäin kulkevaan junaan ei voi varata paikkaa ylihuomiselle.
+\begin{lstlisting}
+INSERT INTO minivr_service
+            (id, train_id, departure_time, free_seats)
+     VALUES (0, 60, '12:15', 26),
+            (1, 90, '13:50', 97)
+\end{lstlisting}
 
 \subsubsection{Station}
 
-Asema, jolta junat lähtevät ja pysähtyvät.
+Asema, joilta junat voivat lähteä ja pysähtyä.
+\begin{lstlisting}
+INSERT INTO minivr_station
+            (id, name)
+     VALUES (0, 'Helsinki'),
+            (1, 'Pasila'),
+            (2, 'Tikkurila')
+\end{lstlisting}
 
 \subsubsection{Stop}
 
-Yksittäinen pysähdys asemalla.
+Yksittäinen pysähdys asemalla junavuorolle.
+\begin{lstlisting}
+INSERT INTO minivr_stop
+            (id, service_id, station_id, arrival_time, departure_time, year_min, year_max, month_min, month_max, weekday_min, weekday_max)
+     VALUES (0, 0,  25,NULL, 0,2010,2011,1,12,1,7),
+            (1, 0,  28,  14,15,2010,2011,1,12,1,7)
+\end{lstlisting}
 
 \subsubsection{Ticket}
 
 Vuorolle varattu lippu.
+\begin{lstlisting}
+INSERT INTO minivr_ticket
+            (id, service_id, customer_type_id, price_per_cost)
+     VALUES (0, 0, 1, 0.331600),
+            (1, 1, 1, 0.859600)
+            (2, 2, 1.613300)
+\end{lstlisting}
 
 \subsubsection{Train}
 
 Juna, jolla vuoro ajetaan.
+\begin{lstlisting}
+INSERT INTO minivr_train
+            (id, name, seats)
+     VALUES (0, 'IC2 109', 120)
+            (1, 'IC 11', 120)
+            (2, 'IC 113', 84)
+\end{lstlisting}
+
 
 \subsection{Tietokantatoteutus}
 
@@ -176,14 +224,13 @@ Taulujen luontikomennot ovat listauksessa~\ref{lst:sqlcreatetables} sivulla~\pag
 
 Suoraviivaisesta ER-mallin muunnoksesta relaatiomalliksi täytyi poiketa monissa kohdissa johtuen käytetyn objekti-relaatiokuvaustekniikan rajoituksista. Tekniikka ei sallinut muunmuassa useamman attribuutin avaimia. Tietokantaan ei voinut myöskään laittaa kuin yksinkertaisia tarkistuksia tiedon oikeellisuudesta.
 
-
-Käytetyn tekniikan rajoituksia olisi voinut osin kiertää käyttämällä tietokantapalvelimeen tallennettuja proseduureja. Projektin yhteydessä haluttiin kuitenkin opetella objekti-relaatiokuvauksen käyttöä sen ketteryyden ja käytännöllisyyden vuoksi.
+Käytetyn tekniikan rajoituksia olisi voinut osin kiertää käyttämällä tietokantapalvelimeen tallennettuja proseduureja tai näkymiä. Projektin yhteydessä haluttiin kuitenkin opetella objekti-relaatiokuvauksen käyttöä sen ketteryyden ja käytännöllisyyden vuoksi.
 
 \subsubsection{Testidata}
 
 Pohjana testidatalle on ote VR:n junavuorojen aikatauluista CSV\footnote{Comma Separated Values}-muodossa. Lähdekoodin tiedostossa \texttt{schedules.csv} on riveittäin lueteltu junavuoron tunnus, pysäkki, saapumisaika asemalle ja lähtöaika asemalta.
 
-\begin{figure}[h]
+\begin{figure}
 \begin{lstlisting}
 IC2 109,Helsinki,,14:12
 IC2 109,Pasila,14:17,14:18
@@ -196,25 +243,33 @@ IC 11,Helsinki,,18:12
   \caption{Ote junavuorojen testidatasta}
 \end{figure}
 
-Projektissa testidata generoidaan tietokantaan Python-skriptillä, joka luo tarvittavat tietorakenteet, sekä täydentää syöttötietoja satunnaisdatalla.
+Projektissa testidata generoidaan tietokantaan Python-skriptillä, joka luo tarvittavat tietorakenteet ja täydentää syöttötietoja satunnaisdatalla muunmuassa etäisyydet ja hinnat.
 
 \subsubsection{Normalisointi}
 \textbf{TODO:} Esitys funktionaalisista riippuvuuksista taulujen attribuuttien välillä. Ovatko taulut BCNF-normaalimuodossa? BCNF-normaalimuodon rikkominen edellyttää perustelut. 
 
 \subsubsection{Indeksointi}
-\textbf{TODO:} Käytetyn indeksoinnin perustelut.
+Junayhteyksien haku on toteutettu Dijkstran algoritmilla sovelluksessa siten että tietokannalle tehdään tiheästi yksinkertaisia kyselyitä ja datamäärä on pieni. Indekseistä on rajoitetusti apua vain suuremmissa tauluissa joissa on yli tuhat riviä testidataa (\emph{Connection}, \emph{Stop}).
+
+Tauluissa on indeksejä primääriavaimien lisäksi seuraavasti:
+
+\begin{tabular}{ll}
+\emph{Ticket} & service\_id, customer\_type\_id\\
+\emph{Service} & train\_id\\
+\emph{Stop} & service\_id, station\_id\\
+\emph{Connection} & out\_of\_id, to\_id\\
+\end{tabular}
 
 \subsection{Tärkeimmät tietokantakyselyt}
-\textbf{TODO:} Tärkeimmät tietokantakyselyt
 
 \subsubsection{Junayhteyksien haku Dĳkstran algoritmilla}
 Toteutetun työn tärkein osuus on tarjota mahdollisia junayhteyksiä asiakkaalle. Tietokantaan on tallennettu saapumis- ja lähtöaikoja junavuoroittain. Ohjelman tehtävänä on päätellä kelvolliset suorat ja vaihdolliset junayhteydet ja esittää ne yksinkertaisessa muodossa.
 
 Yksi mahdollinen tapa ratkaista ongelma on ajatella toteutuvia junavuoroja suunnattuna verkkona (jossa voi olla silmukoita). Ratkaisun voi löytää soveltamalla jotain tunnettua algoritmia polkujen löytämiseksi.
 
-Toteutimme reittihakuihin muunnelman Dĳkstran algoritmista\footnote{Katso algoritmin kuvaus esimerkiksi \href{http://fi.wikipedia/Dijkstran\_algoritmi}{Wikipediasta}} joka löytää vaihtoehtoiset reitit. \textbf{TODO: pitääkö tämä paikkansa? --mtorni} 
+Toteutimme reittihakuihin muunnelman Dĳkstran algoritmista\footnote{Katso algoritmin kuvaus esimerkiksi \href{http://fi.wikipedia/Dijkstran\_algoritmi}{Wikipediasta}} joka löytää vaihtoehtoiset reitit.
 
-\lstset{float,language=SQL,caption=\textbf{TODO:} Esimerkki kyselylauseesta}
+\lstset{language=SQL,caption=Esimerkki kyselylauseesta}
 \begin{lstlisting}
 SELECT * FROM
   (SELECT
@@ -231,10 +286,6 @@ SELECT * FROM
                  ON (minivr_stop.station_id = minivr_station.id)
      WHERE UPPER(minivr_station.name::text) = UPPER(?)
        AND minivr_service.free_seats > 0
-
---       FIXME: this doesnt take into account the fact that the
---       time may wrap into another date. That's not as trivial to
---       handle as it may seem.
        AND (minivr_stop.year_min IS NULL
             OR (    minivr_stop.year_min <= wanted_year
                 AND minivr_stop.year_max >= wanted_year
@@ -263,15 +314,18 @@ Käyttäjä voi useimmissa ruuduissa klikata junavuoron nimeä jolloin näkyviin
 \subsection{Reitin haku}
 Sivulla käyttäjä voi hakea vuoroja asemalta mille tahansa muulle asemalle. Käyttäjän täytyy syöttää toivottu lähtö- tai saapumisaika. Haun tuloksena käyttäjälle näytetään kaikki mahdolliset junavuorot saman vuorokauden sisällä.
 
-Haun suorittamisen jälkeen käyttäjällä on mahdollisuus varata paikka junavuoroon painamalla \emph{Varaa}-painiketta. Järjestelmä ilmoittaa onnistuiko varaus.
+Haun suorittamisen jälkeen käyttäjällä on mahdollisuus varata paikka haluamaansa junavuoroon painamalla \emph{Varaa}-painiketta. Järjestelmä ilmoittaa onnistuiko varaus.
 
 \begin{figure}
-  \includegraphics[width=100mm]{route.png}
+  \includegraphics[width=130mm]{route.png}
   \caption{Reitin haku}
 \end{figure}
 
 \subsection{Kaikki junavuorot}
 Sivulla näkyy listaus kaikista junavuoroista lähtö- ja pääteasemineen.
+
+\subsection{Kaikki asemat}
+Sivulla näkyy lista kaikista asemista.
 
 \subsection{Varauksen onnistuminen}
 
@@ -280,9 +334,6 @@ käyttäjälle erillisellä sivulla.
 
 Tältä sivulta pitäisi pystyä palaamaan rettihakusivulle (tämä on vielä
 tekemättä).
-
-\subsection{Käyttöliittymäsivu \ldots}
-\textbf{TODO:} Käyttöliittymäsivujen esittely sivu kerrallaan, siten että jokaisen sivun käyttötarkoitus ilmenee. Kertokaa käyttäjän syöttämien tietojen tarkistuksesta. Screenshotit ovat hyvä juttu. 
 
 \section{Viimeistely}
 
@@ -293,9 +344,13 @@ reittihakuun).
 Virhesivuja ei ole viimeistelty (kaksi yhtäaikaista varausta viimeiseen
 paikkaan, toinen siis epäonnistuu).
 
+Reitinhaku sallii vaihdon junavuorosta toiseen kesken matkan, jos saapumis- ja
+lähtöaikojen ero ylittää kovakoodatun rajan: 5 minuuttia. Demoon mennessä on
+tarkoitus antaa käyttäjälle mahdollisuus valita tämä raja.
+
 \section{Loppusanat}
 \subsection{Työmäärä}
-\textbf{TODO:} Lisäksi toivomme myös rehellistä selvitystä töiden jakautumisesta ryhmän jäsenten kesken, sekä arvioita tehdyistä tunneista kunkin aktiviteetin osalta. Mikäli ette ole pitäneet tunneista kirjaa, summittaisetkin arviot kelpaavat. Tämän kappaleen tiedot eivät vaikuta työn arvosteluun.
+\textbf{TODO:} Matti Niemenmaan työtunnit
 
 Mikko Markus Torni käytti harjoitustyöhön aikaa yhden tunnin ideoiden ylös kirjaamiseen, 12 tuntia dokumentoinnissa ja kaksi tuntia koodiin tutustumiseen.
 
