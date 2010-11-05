@@ -2,6 +2,7 @@
 
 from datetime import date
 from decimal  import Decimal
+import time
 
 from django.core.urlresolvers import reverse
 from django.db                import connection
@@ -51,12 +52,18 @@ def service_reserve_simple(request, service_id):
                               {'service':service})
 
 def get_route(request):
-    if not request.GET:
-        return render_to_response('get_route.html')
-
     # Passed to the template even in the case of errors, so that it can fill in
     # the form with what the user previously input.
     vals = dict((k, unicode(v)) for (k,v) in request.GET.iteritems())
+
+    (_, _, _, hours_now, minutes_now, _, _, _, _) = time.localtime()
+    if not vals.get('h'):
+        vals['h'] = hours_now
+    if not vals.get('m'):
+        vals['m'] = minutes_now
+
+    if not request.GET:
+        return render_to_response('get_route.html', vals)
 
     error = False
     try:
@@ -471,5 +478,6 @@ def get_route(request):
     get_routes(from_stops_after)
 
     vals.update({'routes': routes})
+
     return render_to_response('get_route.html', vals,
                               context_instance = RequestContext(request))
