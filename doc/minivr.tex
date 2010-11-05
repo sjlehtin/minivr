@@ -365,14 +365,17 @@ Tauluissa on indeksejä primääriavaimien lisäksi seuraavasti:
 
 \subsection{Tärkeimmät tietokantakyselyt}
 
-\subsubsection{Junayhteyksien haku Dĳkstran algoritmilla}
 Toteutetun työn tärkein osuus on tarjota mahdollisia junayhteyksiä asiakkaalle. Tietokantaan on tallennettu saapumis- ja lähtöaikoja junavuoroittain. Ohjelman tehtävänä on päätellä kelvolliset suorat ja vaihdolliset junayhteydet ja esittää ne yksinkertaisessa muodossa.
 
 Yksi mahdollinen tapa ratkaista ongelma on ajatella toteutuvia junavuoroja suunnattuna verkkona (jossa voi olla silmukoita). Ratkaisun voi löytää soveltamalla jotain tunnettua algoritmia polkujen löytämiseksi.
 
 Toteutimme reittihakuihin muunnelman Dĳkstran algoritmista\footnote{Katso algoritmin kuvaus esimerkiksi \href{http://fi.wikipedia/Dijkstran\_algoritmi}{Wikipediasta}} joka löytää vaihtoehtoiset reitit.
 
-\lstset{language=SQL,caption=Eräs alkupisteet hakeva kyselylause}
+Alla listaus kyselylauseesta, joka hakee lähtöaikahaulle sellaiset lähdöt,
+jotka edeltävät pyydettyä aikaa. (Kyselyt, jotka hakevat saapumisaikahaulle
+ja/tai pyydettyä aikaa seuraavat lähdöt/saapumiset, ovat lähes identtisiä.)
+
+\lstset{language=SQL,caption=Eräs alkupisteet hakeva kyselylause.}
 \begin{lstlisting}
 SELECT * FROM
   (SELECT
