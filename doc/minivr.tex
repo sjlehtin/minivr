@@ -316,14 +316,14 @@ Yksi mahdollinen tapa ratkaista ongelma on ajatella toteutuvia junavuoroja suunn
 
 Toteutimme reittihakuihin muunnelman Dĳkstran algoritmista\footnote{Katso algoritmin kuvaus esimerkiksi \href{http://fi.wikipedia/Dijkstran\_algoritmi}{Wikipediasta}} joka löytää vaihtoehtoiset reitit.
 
-\lstset{language=SQL,caption=Esimerkki kyselylauseesta}
+\lstset{language=SQL,caption=Eräs alkupisteet hakeva kyselylause}
 \begin{lstlisting}
 SELECT * FROM
   (SELECT
      (60 * extract(hour   from minivr_service.departure_time)
        +   extract(minute from minivr_service.departure_time)
        + minivr_stop.departure_time
-       - ?)
+       - wanted_time)
      AS t,
      minivr_stop.*
      FROM minivr_stop
@@ -331,7 +331,7 @@ SELECT * FROM
                  ON (minivr_stop.service_id = minivr_service.id)
          INNER JOIN minivr_station
                  ON (minivr_stop.station_id = minivr_station.id)
-     WHERE UPPER(minivr_station.name::text) = UPPER(?)
+     WHERE UPPER(minivr_station.name::text) = UPPER(wanted_name)
        AND minivr_service.free_seats > 0
        AND (minivr_stop.year_min IS NULL
             OR minivr_stop.year_min <= wanted_year)
