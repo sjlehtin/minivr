@@ -2,10 +2,10 @@
 <html>
 <head>
     <meta http-equiv=Content-Type content="text/html;charset=utf-8">
-    <title>MiniVR - reitinhaku</title>
+    <title>MiniVR - junayhteyksien haku</title>
 </head>
 <body>
-<h1>Reitinhaku</h1>
+<h1>Junayhteyksien haku</h1>
 <form action="/minivr/route/" method=get>
     <p><label for="from">Mistä: </label><input type="text" name="from" id="from" value="{{ from }}"> <small><em>esim. Turku, Helsinki, Joensuu,..</em></small></p>
     <p><label for="to">Mihin: </label><input type="text" name="to" id="to" value="{{ to }}"> <small><em>kuten yllä</em></small></p>
@@ -30,7 +30,7 @@
         ><label for=c{{ ctype.id }}>{{ ctype.name|title }}</label>
     {% endfor %}
     </p>
-    <input type="submit" value="Hae reitti">
+    <input type="submit" value="Hae">
 </form>
 
 <p>
