@@ -236,17 +236,27 @@ def get_route(request):
         def __eq__(self, other):
             return isinstance(other, StopNode) and cmp(self, other) == 0
 
+        def __ne__(self, other):
+            return not self == other
+
         def __cmp__(self, other):
             return cmp(( self.service_id,  self.station_id),
                        (other.service_id, other.station_id))
 
         def get_connections(self, from_node):
-            if self.successors == None or \
-               (self.from_node != from_node and \
-                (self == from_node or self == self.from_node)):
-
+            new_from = False
+            if self.from_node != from_node:
                 self.from_node = from_node
+                new_from = True
+
+            if self.successors == None:
                 self.__compute_successors()
+
+            # If we got a new from_node and whether we are a from_node changed,
+            # recompute the switch_successors only, since they're the only ones
+            # that care about it.
+            elif new_from and (self == self.from_node) != (self == from_node):
+                self.__compute_switch_successors()
 
             return self.successors
 
@@ -254,11 +264,20 @@ def get_route(request):
             self.successors = []
 
             # There are two classes of successors for each node.
+            self.__compute_switch_successors()
+            self.__compute_continue_successors()
 
+        def __compute_switch_successors(self):
             # Firstly, one can switch from one train to another available
             # departing (arriving) one if the time between the first one's
             # arrival (departure) and the latter one's departure (arrival) is
             # short enough.
+            #
+            # This is only a possible action if we're not at the starting
+            # point.
+            if self == self.from_node:
+                return
+
             stops = Stop.objects.select_related().\
                          exclude(service = self.service_id).\
                          filter (station = self.station_id,
@@ -286,22 +305,11 @@ def get_route(request):
                 timediff = (next_dt.hour   - prev_dt.hour) * 60 + \
                            (next_dt.minute - prev_dt.minute)
 
-                # For the "from" stop, there is no time limit, and the cost is
-                # the difference between the departure (arrival) times.
-                if self == self.from_node:
-                    if search_forwards:
-                        timediff += next.departure_time - self.departure_time
-                    else:
-                        timediff += self.arrival_time - next.arrival_time
-
-                    timediff %= 24*60
-                    self.successors.append((next, timediff))
-
-                # Don't bother adding train-switch edges for non-"from" nodes
-                # that lack an arrival (departure) time: we can only enter them
-                # by switching trains in the middle of the route, and there's
-                # no need to switch again immediately thereafter.
-                elif (self.arrival_time if search_forwards
+                # Don't bother adding train-switch edges for nodes that lack an
+                # arrival (departure) time: we can only enter them by switching
+                # trains in the middle of the route, and there's no need to
+                # switch again immediately thereafter.
+                if (self.arrival_time if search_forwards
                                         else self.departure_time) != None:
                     if search_forwards:
                         timediff += next.departure_time - self.arrival_time
@@ -312,9 +320,9 @@ def get_route(request):
                     if timediff >= findroute.TRAIN_SWITCH_TIME:
                         self.successors.append((next, timediff))
 
+        def __compute_continue_successors(self):
             # Secondly, one can continue in the same train, if it will ever
             # depart (arrive).
-
             if search_forwards:
                 if self.departure_time == None:
                     return
