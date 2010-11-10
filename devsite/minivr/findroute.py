@@ -1,7 +1,5 @@
 import unittest
 
-TRAIN_SWITCH_TIME = 5
-
 class GraphNode(object):
     """
     This class describes the interface required from nodes handled by

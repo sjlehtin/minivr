@@ -75,6 +75,8 @@ def get_route(request):
     vals.setdefault('mo', now.month)
     vals.setdefault('d',  now.day)
 
+    vals.setdefault('margin', 5)
+
     if not request.GET:
         return render_to_response('get_route.html', vals)
 
@@ -94,6 +96,8 @@ def get_route(request):
             search_forwards = False
         else:
             raise ValueError
+
+        switch_margin = int(vals['margin'])
 
         wanted_hour = int(vals['h'])
         if not 0 <= wanted_hour < 24:
@@ -318,7 +322,7 @@ def get_route(request):
                         timediff += self.departure_time - next.arrival_time
 
                     timediff %= 24*60
-                    if timediff >= findroute.TRAIN_SWITCH_TIME:
+                    if timediff >= switch_margin:
                         self.successors.append((next, timediff))
 
         def __compute_continue_successors(self):
